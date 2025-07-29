@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Filament\Resources\AktivaResource\Pages;
+
+use App\Filament\Resources\AktivaResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AktivaExport;
+use App\Imports\AktivaImport;
+use Livewire\WithFileUploads;
+use Filament\Forms\Components\FileUpload;
+use Filament\Pages\Actions\Action;
+
+class ListAktivas extends ListRecords
+{
+    use WithFileUploads;
+    public $importFile;
+    protected static string $resource = AktivaResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('export')
+                ->label('Export Excel')
+                ->color('success')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->action(function () {
+                    return Excel::download(new AktivaExport, 'aktiva.xlsx');
+                }),
+
+            \EightyNine\ExcelImport\ExcelImportAction::make()
+                ->label('Import Excel')
+                ->slideOver()
+                ->color("gray")
+                ->use(AktivaImport::class),
+
+            Actions\CreateAction::make(),
+        ];
+    }
+}
