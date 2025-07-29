@@ -47,7 +47,7 @@ class ListAssets extends ListRecords
             \EightyNine\ExcelImport\ExcelImportAction::make()
             ->sampleExcel(
                 sampleData: [
-                    ['name' => 'Kursi', 'condition' => 'bagus', 'portability' => 'portable', 'entries_number' => 0001, 'description' => 'Kursi kayu', 'brand' => 'Brand A', 'price' => 100000, 'aquisition' => 'YAPI', 'aquisition_date' => now(), 'status' => 'active', 'image' => null, 'user_id' => 1, 'unit_id' => 1, 'tool_id' => 1, 'location_id' => 1, 'category_id' => 1, 'year_id' => 2023, 'aktiva_id' => 1],
+                    ['name' => 'Kursi', 'condition' => 'bagus', 'portability' => 'portable', 'entries_number' => 0001, 'description' => 'Kursi kayu', 'brand' => 'Brand A', 'price' => 100000, 'aquisition' => 'YAPI', 'aquisition_date' => now(), 'status' => 'active', 'image' => null, 'user_id' => 1, 'unit_id' => 1, 'tool_id' => 1, 'location_id' => 1, 'category_id' => 1, 'year_id' => 1, 'aktiva_id' => 1],
                 ],
                 fileName: 'sample-asset.xlsx',
                 exportClass: AssetSampleExport::class,

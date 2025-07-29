@@ -24,7 +24,7 @@ class LocationSampleExport implements FromArray, WithHeadings
     {
         return [
             'name',
-            'code',
+            'number',
             'floor',
             'unit_id',
             'user_id',
