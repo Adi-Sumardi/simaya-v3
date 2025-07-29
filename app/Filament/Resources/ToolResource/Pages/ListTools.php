@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ToolResource\Pages;
 
 use App\Exports\ToolExport;
+use App\Exports\ToolSampleExport;
 use App\Filament\Resources\ToolResource;
 use App\Imports\ToolImport;
 use Filament\Actions;
@@ -23,18 +24,25 @@ class ListTools extends ListRecords
     {
         return [
             Action::make('export')
-                ->label('Export Excel')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->action(function () {
                     return Excel::download(new ToolExport, 'tool.xlsx');
                 }),
 
             \EightyNine\ExcelImport\ExcelImportAction::make()
-                ->label('Import Excel')
-                ->slideOver()
-                ->color("gray")
-                ->use(ToolImport::class),
+            ->sampleExcel(
+                sampleData: [
+                    ['name' => 'meja', 'code' => '01', 'code_name' => 'MJ'],
+                ],
+                fileName: 'sample-tool.xlsx',
+                exportClass: ToolSampleExport::class,
+                sampleButtonLabel: 'Download Sample',
+                customiseActionUsing: fn($action) => $action
+                        ->color('secondary')
+                        ->icon('heroicon-m-clipboard')
+                        ->requiresConfirmation(),
+            ),
 
             Actions\CreateAction::make(),
         ];

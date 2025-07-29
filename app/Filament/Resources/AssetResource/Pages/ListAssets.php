@@ -38,7 +38,7 @@ class ListAssets extends ListRecords
 
             Action::make('export')
                 ->label('Export')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->action(function () {
                     return Excel::download(new AssetExport, 'asset.xlsx');

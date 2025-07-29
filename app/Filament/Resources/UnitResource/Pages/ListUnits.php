@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UnitResource\Pages;
 
 use App\Exports\UnitExport;
+use App\Exports\UnitSampleExport;
 use App\Filament\Resources\UnitResource;
 use App\Imports\UnitImport;
 use Filament\Actions;
@@ -23,18 +24,25 @@ class ListUnits extends ListRecords
     {
         return [
             Action::make('export')
-                ->label('Export Excel')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->action(function () {
                     return Excel::download(new UnitExport, 'unit.xlsx');
                 }),
 
             \EightyNine\ExcelImport\ExcelImportAction::make()
-                ->label('Import Excel')
-                ->slideOver()
-                ->color("gray")
-                ->use(UnitImport::class),
+            ->sampleExcel(
+                sampleData: [
+                    ['name' => 'PG Sakinah', 'number' => '01'],
+                ],
+                fileName: 'sample-unit.xlsx',
+                exportClass: UnitSampleExport::class,
+                sampleButtonLabel: 'Download Sample',
+                customiseActionUsing: fn($action) => $action
+                        ->color('secondary')
+                        ->icon('heroicon-m-clipboard')
+                        ->requiresConfirmation(),
+            ),
 
             Actions\CreateAction::make(),
         ];

@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\CategoryResource\Pages;
 
 use App\Exports\CategoryExport;
+use App\Exports\CategorySampleExport;
 use App\Filament\Resources\CategoryResource;
 use App\Imports\CategoryImport;
+use App\Models\Category;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Pages\ListRecords;
@@ -23,18 +25,25 @@ class ListCategories extends ListRecords
     {
         return [
             Action::make('export')
-                ->label('Export Excel')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->action(function () {
                     return Excel::download(new CategoryExport, 'category.xlsx');
                 }),
 
             \EightyNine\ExcelImport\ExcelImportAction::make()
-                ->label('Import Excel')
-                ->slideOver()
-                ->color("gray")
-                ->use(CategoryImport::class),
+            ->sampleExcel(
+                sampleData: [
+                    ['name' => 'Elektronik', 'code' => '60'],
+                ],
+                fileName: 'sample-category.xlsx',
+                exportClass: CategorySampleExport::class,
+                sampleButtonLabel: 'Download Sample',
+                customiseActionUsing: fn($action) => $action
+                        ->color('secondary')
+                        ->icon('heroicon-m-clipboard')
+                        ->requiresConfirmation(),
+            ),
 
             Actions\CreateAction::make(),
         ];

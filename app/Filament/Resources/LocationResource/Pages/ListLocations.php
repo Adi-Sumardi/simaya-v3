@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\LocationResource\Pages;
 
 use App\Exports\LocationExport;
+use App\Exports\LocationSampleExport;
 use App\Filament\Resources\LocationResource;
 use App\Imports\LocationImport;
+use App\Models\Location;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Pages\ListRecords;
@@ -23,18 +25,25 @@ class ListLocations extends ListRecords
     {
         return [
             Action::make('export')
-                ->label('Export Excel')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->action(function () {
                     return Excel::download(new LocationExport, 'location.xlsx');
                 }),
 
             \EightyNine\ExcelImport\ExcelImportAction::make()
-                ->label('Import Excel')
-                ->slideOver()
-                ->color("gray")
-                ->use(LocationImport::class),
+            ->sampleExcel(
+                sampleData: [
+                    ['name' => 'sekertariat', 'number' => '01', 'floor' => '1', 'unit_id' => '1', 'user_id' => '1'],
+                ],
+                fileName: 'sample-location.xlsx',
+                exportClass: LocationSampleExport::class,
+                sampleButtonLabel: 'Download Sample',
+                customiseActionUsing: fn($action) => $action
+                        ->color('secondary')
+                        ->icon('heroicon-m-clipboard')
+                        ->requiresConfirmation(),
+            ),
 
             Actions\CreateAction::make(),
         ];

@@ -3,21 +3,28 @@
 namespace App\Imports;
 
 use App\Models\Unit;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class UnitImport implements ToModel, WithHeadingRow
+class UnitImport implements ToCollection, WithHeadingRow
 {
     /**
-    * @param array $row
-    *
-    * @return \Illuminate\Database\Eloquent\Model|null
-    */
-    public function model(array $row)
+     * @param Collection $rows
+     */
+
+    public function collection(Collection $rows)
     {
-        return Unit::updateOrCreate([
-            'name' => $row['name'],
-            'number' => $row['number'],
-        ]);
+        foreach ($rows as $row) {
+            Unit::updateOrCreate(
+                [
+                    'name' => $row['name'],
+                ],
+                [
+                    'number' => $row['number'],
+                ]
+            );
+        }
     }
 }

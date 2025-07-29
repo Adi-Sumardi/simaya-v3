@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\YearResource\Pages;
 
 use App\Exports\YearExport;
+use App\Exports\YearSampleExport;
 use App\Filament\Resources\YearResource;
 use App\Imports\YearImport;
 use Filament\Actions;
@@ -23,18 +24,26 @@ class ListYears extends ListRecords
     {
         return [
             Action::make('export')
-                ->label('Export Excel')
-                ->color('success')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->action(function () {
                     return Excel::download(new YearExport, 'year.xlsx');
                 }),
 
             \EightyNine\ExcelImport\ExcelImportAction::make()
-                ->label('Import Excel')
-                ->slideOver()
-                ->color("gray")
-                ->use(YearImport::class),
+            ->sampleExcel(
+                sampleData: [
+                    ['year' => '2020', 'code' => '20'],
+                    ['year' => '2025', 'code' => '25'],
+                ],
+                fileName: 'sample-year.xlsx',
+                exportClass: YearSampleExport::class,
+                sampleButtonLabel: 'Download Sample',
+                customiseActionUsing: fn($action) => $action
+                        ->color('secondary')
+                        ->icon('heroicon-m-clipboard')
+                        ->requiresConfirmation(),
+            ),
 
             Actions\CreateAction::make(),
         ];
