@@ -7,6 +7,7 @@ use App\Filament\Resources\AssetResource\RelationManagers;
 use App\Filament\Resources\AssetResource\Widgets\AssetStats;
 use App\Models\Asset;
 use Filament\Forms;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Infolists\Infolist;
 use Filament\Tables\Columns\ImageColumn;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class AssetResource extends Resource
@@ -320,6 +322,39 @@ class AssetResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                     Tables\Actions\ForceDeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
+
+                    Tables\Actions\BulkAction::make('updateUnitLocation')
+                    ->label('Ubah Unit dan Lokasi')
+                    ->form([
+                        Select::make('unit_id')
+                            ->label('Unit')
+                            ->options(\App\Models\Unit::pluck('name', 'id')->toArray())
+                            ->required()
+                            ->reactive(),
+
+                        Select::make('location_id')
+                            ->label('Lokasi')
+                            ->required()
+                            ->options(function (callable $get) {
+                                $unitId = $get('unit_id');
+                                if (!$unitId) {
+                                    return [];
+                                }
+                                return \App\Models\Location::where('unit_id', $unitId)->pluck('name', 'id')->toArray();
+                            }),
+                    ])
+                    ->action(function (Collection $records, array $data): void {
+                        foreach ($records as $record) {
+                            $record->update([
+                                'unit_id' => $data['unit_id'],
+                                'location_id' => $data['location_id'],
+                            ]);
+                        }
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->requiresConfirmation()
+                    ->color('primary')
+                    ->icon('heroicon-o-arrow-path-rounded-square'),
                 ]),
             ]);
     }
