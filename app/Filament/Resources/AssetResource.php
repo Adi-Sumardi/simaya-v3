@@ -7,6 +7,7 @@ use App\Filament\Resources\AssetResource\RelationManagers;
 use App\Filament\Resources\AssetResource\Widgets\AssetStats;
 use App\Models\Asset;
 use Filament\Forms;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\ImageEntry;
@@ -20,6 +21,8 @@ use Filament\Infolists\Infolist;
 use Filament\Tables\Columns\ImageColumn;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class AssetResource extends Resource
 {
@@ -324,7 +327,7 @@ class AssetResource extends Resource
                     Tables\Actions\RestoreBulkAction::make(),
 
                     Tables\Actions\BulkAction::make('updateUnitLocation')
-                    ->label('Ubah Unit dan Lokasi')
+                    ->label('Change Unit dan Location')
                     ->form([
                         Select::make('unit_id')
                             ->label('Unit')
@@ -355,6 +358,49 @@ class AssetResource extends Resource
                     ->requiresConfirmation()
                     ->color('primary')
                     ->icon('heroicon-o-arrow-path-rounded-square'),
+
+                    Tables\Actions\BulkAction::make('uploadImage')
+                    ->label('Add Image')
+                    ->form([
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                FileUpload::make('image')
+                                    ->preserveFilenames()
+                                    ->directory('assets')
+                                    ->label('Upload Image')
+                                    ->maxSize(1024)
+                                    ->columnSpanFull()
+                                    ->image(),
+                            ])->columns(1),
+                    ])
+                    ->action(function (Collection $records, array $data) {
+                        $imagePath = $data['image'];
+
+                        try {
+                            foreach ($records as $record) {
+                                $record->image = $imagePath;
+                                $record->save();
+
+                                if (method_exists($record, 'images')) {
+                                    $record->images()->create(['path' => $imagePath]);
+                                }
+                            }
+
+                            Notification::make()
+                                ->success()
+                                ->title('Berhasil')
+                                ->body('Gambar berhasil ditambahkan ke asset terpilih.')
+                                ->send();
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Gagal')
+                                ->body('Terjadi kesalahan: ' . $e->getMessage())
+                                ->send();
+                        }
+                    })
+                    ->icon('heroicon-o-photo'),
                 ]),
             ]);
     }

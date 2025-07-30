@@ -72,4 +72,9 @@ class Asset extends Model
     {
         return $this->belongsTo(Aktiva::class);
     }
+
+    public function images()
+    {
+        return $this->hasMany(assetImages::class);
+    }
 }

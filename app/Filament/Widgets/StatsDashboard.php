@@ -11,8 +11,6 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatsDashboard extends BaseWidget
 {
-
-    protected static ?int $navigationSort = 2;
     protected function getStats(): array
     {
         return [
