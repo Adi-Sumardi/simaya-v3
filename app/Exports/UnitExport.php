@@ -14,12 +14,13 @@ class UnitExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        return Unit::select('name', 'number')->get();
+        return Unit::select('id', 'name', 'number')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Name',
             'Number',
         ];

@@ -13,12 +13,13 @@ class CategoryExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        return Category::select('name', 'code')->get();
+        return Category::select('id', 'name', 'code')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Name',
             'Code',
         ];

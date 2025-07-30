@@ -42,11 +42,24 @@
                   <div class="col-md-4">
                     <div id="print-area">
                         <div class="card">
-                            <div class="card-body">
-                                <div class="bx-border" style="width: 380px; height: 380px; border: 1px solid black;s">
-                                  <div style="display: flex; align-items: center; justify-content: center;">
-                                    <div id="qrcode-{{$id}}" style="width: 360px; height: 300px; margin-top: 10px;"></div>
-                                  </div>
+                            <div class="card-body text-center">
+                                <div class="bx-border mx-auto" style="width: 380px; height: 380px; border: 1px solid black; position: relative;">
+                                    <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+                                    <div id="qrcode-{{$id}}" style="width: 360px; height: 360px;"></div>
+                                    <img src="{{ asset('images/yapi.png') }}" alt="Logo Tengah"
+                                        style="
+                                            position: absolute;
+                                            top: 50%;
+                                            left: 50%;
+                                            width: 100px;
+                                            height: 100px;
+                                            transform: translate(-50%, -50%);
+                                            z-index: 5;
+                                            background: white;
+                                            padding: 5px;
+                                            border-radius: 10px;
+                                        ">
+                                    </div>
                                 </div>
                             </div>
                         </div>

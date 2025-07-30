@@ -14,12 +14,13 @@ class YearExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        return Year::select('year', 'code')->get();
+        return Year::select('id', 'year', 'code')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Year',
             'Code',
         ];

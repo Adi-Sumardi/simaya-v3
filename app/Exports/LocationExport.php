@@ -13,12 +13,13 @@ class LocationExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        return Location::select('name', 'number', 'floor', 'unit_id', 'user_id')->get();
+        return Location::select('id', 'name', 'number', 'floor', 'unit_id', 'user_id')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Name',
             'Number',
             'Floor',

@@ -12,12 +12,13 @@ class ToolExport implements FromCollection
     */
     public function collection()
     {
-        return Tool::select('name', 'code', 'code_name')->get();
+        return Tool::select('id', 'name', 'code', 'code_name')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Name',
             'Code',
             'Code Name',

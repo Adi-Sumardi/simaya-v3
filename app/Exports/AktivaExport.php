@@ -13,12 +13,13 @@ class AktivaExport implements FromCollection, WithHeadings
     */
     public function collection()
     {
-        return Aktiva::select('name', 'code')->get();
+        return Aktiva::select('id', 'name', 'code')->get();
     }
 
     public function headings(): array
     {
         return [
+            'ID',
             'Name',
             'Code',
         ];
