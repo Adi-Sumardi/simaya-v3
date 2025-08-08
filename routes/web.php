@@ -10,3 +10,4 @@ Route::get('/', function () {
 Route::get('/guest-data-asset', [AssetController::class, 'asset'])->name('asset.all');
 Route::get('/guest-detail-asset/{id}', [AssetController::class, 'detail'])->name('asset.detail');
 Route::get('/guest-data-asset-lokasi/{id}', [AssetController::class, 'lokasi'])->name('asset.lokasi');
+Route::get('/guest-data-asset-ruangan/{id}', [AssetController::class, 'ruangan'])->name('asset.ruangan');

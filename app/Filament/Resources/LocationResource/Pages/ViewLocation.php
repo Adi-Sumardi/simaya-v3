@@ -19,6 +19,13 @@ class ViewLocation extends ViewRecord
                 ->color('info')
                 ->url(route('asset.lokasi', ['id' => $this->record->id]))
                 ->openUrlInNewTab(),
+
+            Actions\Action::make('qrcode')
+                ->label('Assets Lokasi QR Code')
+                ->icon('heroicon-o-qr-code')
+                ->color('gray')
+                ->url(route('asset.ruangan', ['id' => $this->record->id]))
+                ->openUrlInNewTab(),
         ];
     }
 }

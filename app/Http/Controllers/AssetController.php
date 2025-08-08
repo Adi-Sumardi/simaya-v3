@@ -25,4 +25,11 @@ class AssetController extends Controller
         $lokasi = Location::findOrFail($id);
         return view('filament.pages.assets.kelas', compact('id', 'lokasi'));
     }
+
+    public function ruangan($id)
+    {
+        $lokasi = Location::findOrFail($id);
+        $dt_assets = Asset::where('location_id', $id)->get();
+        return view('filament.pages.assets.ruangan', compact('id', 'lokasi', 'dt_assets'));
+    }
 }
