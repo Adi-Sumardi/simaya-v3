@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\AppModelsAsset;
 use App\Models\Asset;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -10,28 +9,34 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 class AssetExport implements FromCollection, WithHeadings
 {
     /**
-    * @return \Illuminate\Support\Collection
-    */
+     * @return \Illuminate\Support\Collection
+     */
     public function collection()
     {
-        return Asset::select('name',
-                            'condition',
-                            'portability',
-                            'entries_number',
-                            'description',
-                            'brand',
-                            'price',
-                            'aquisition',
-                            'aquisition_date',
-                            'status',
-                            'image',
-                            'user_id',
-                            'unit_id',
-                            'tool_id',
-                            'location_id',
-                            'category_id',
-                            'year_id',
-                            'aktiva_id',)->get();
+        return Asset::with(['unit', 'tool', 'location', 'category', 'year', 'aktiva'])
+            ->get()
+            ->map(function ($asset) {
+                return [
+                    'name' => $asset->name,
+                    'condition' => $asset->condition,
+                    'portability' => $asset->portability,
+                    'entries_number' => $asset->entries_number,
+                    'description' => $asset->description,
+                    'brand' => $asset->brand,
+                    'price' => $asset->price,
+                    'aquisition' => $asset->aquisition,
+                    'aquisition_date' => $asset->aquisition_date,
+                    'status' => $asset->status,
+                    'image' => $asset->image,
+                    'user_id' => $asset->user_id,
+                    'unit' => $asset->unit?->name,
+                    'tool' => $asset->tool?->name,
+                    'location' => $asset->location?->name,
+                    'category' => $asset->category?->name,
+                    'year' => $asset->year?->year,
+                    'aktiva' => $asset->aktiva?->name,
+                ];
+            });
     }
 
     public function headings(): array
@@ -49,12 +54,12 @@ class AssetExport implements FromCollection, WithHeadings
             'Status',
             'Image',
             'User ID',
-            'Unit ID',
-            'Tool ID',
-            'Location ID',
-            'Category ID',
-            'Year ID',
-            'Aktiva ID',
+            'Unit',
+            'Tool',
+            'Location',
+            'Category',
+            'Year',
+            'Aktiva',
         ];
     }
 }

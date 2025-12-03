@@ -57,6 +57,11 @@ class AssetsRelationManager extends RelationManager
                         'danger' => 'rusak',
                     ])
                     ->sortable(),
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Photo')
+                    ->circular()
+                    ->disk('public')
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

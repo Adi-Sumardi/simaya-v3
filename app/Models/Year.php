@@ -11,7 +11,6 @@ class Year extends Model
     use LogsActivity;
 
     protected $table = 'years';
-    protected $guarded = [];
     protected $fillable = ['year', 'code'];
 
     public function getActivitylogOptions(): LogOptions

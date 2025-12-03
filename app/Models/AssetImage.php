@@ -5,8 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class assetImages extends Model
+class AssetImage extends Model
 {
+    protected $table = 'asset_images';
+
     protected $fillable = ['asset_id', 'path'];
 
     public function asset(): BelongsTo

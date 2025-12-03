@@ -11,7 +11,7 @@ class Aktiva extends Model
     use LogsActivity;
 
     protected $table = 'aktivas';
-    protected $guarded = [];
+    protected $fillable = ['name', 'code'];
 
     public function getActivitylogOptions(): LogOptions
     {

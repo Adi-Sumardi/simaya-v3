@@ -179,142 +179,169 @@ class AssetResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 $user = Auth::user();
 
-                if ($user->hasRole('Super Admin')) {
+                // Eager load semua relasi untuk menghindari N+1 query
+                $query->with(['unit', 'location', 'aktiva', 'category', 'tool', 'year']);
+
+                if ($user->hasRole('Super Admin') || $user->hasRole(['Manajer', 'Manager'])) {
                     return;
                 }
 
-                if ($user->hasRole('Unit')) {
-                    $query->where('user_id', $user->id);
+                // Role Unit: hanya tampilkan aset dari unit mereka
+                if ($user->hasRole('Unit') && $user->unit_id) {
+                    $query->where('unit_id', $user->unit_id);
                 }
-
             })
+            ->defaultPaginationPageOption(25)
+            ->deferLoading()
+            ->striped()
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Foto')
+                    ->circular()
+                    ->size(40)
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random&size=40'),
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Aset')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->description(fn ($record) => $record->brand ?? '-'),
+
                 Tables\Columns\TextColumn::make('entries_number')
-                    ->label('Nomor Urut')
+                    ->label('No. Aset')
                     ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('brand')
-                    ->label('Merk')
-                    ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->badge()
+                    ->color('gray'),
+
                 Tables\Columns\TextColumn::make('unit.name')
                     ->label('Unit')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->icon('heroicon-o-building-office')
+                    ->iconColor('primary'),
+
                 Tables\Columns\TextColumn::make('location.name')
                     ->label('Lokasi')
                     ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('aktiva.name')
-                    ->label('Aktiva')
+                    ->sortable()
+                    ->icon('heroicon-o-map-pin')
+                    ->iconColor('success')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('category.name')
+                    ->label('Kategori')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Harga')
+                    ->money('IDR', locale: 'id')
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('condition')
                     ->label('Kondisi')
-                    ->searchable()
                     ->badge()
-                    ->colors([
-                        'success' => 'bagus',
-                        'danger' => 'rusak',
-                    ])
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'bagus' => 'Bagus',
+                        'rusak' => 'Rusak',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'bagus' => 'success',
+                        'rusak' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'bagus' => 'heroicon-o-check-circle',
+                        'rusak' => 'heroicon-o-x-circle',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
                     ->sortable(),
+
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
-                    ->searchable()
                     ->badge()
-                    ->colors([
-                        'success' => 'active',
-                        'danger' => 'inactive',
-                        'warning' => 'deleted',
-                        'secondary' => 'repaired',
-                    ])
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'active' => 'Aktif',
+                        'inactive' => 'Tidak Aktif',
+                        'deleted' => 'Dihapus',
+                        'repaired' => 'Diperbaiki',
+                        'transferred' => 'Ditransfer',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'danger',
+                        'deleted' => 'warning',
+                        'repaired' => 'gray',
+                        'transferred' => 'info',
+                        default => 'gray',
+                    })
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('aquisition_date')
+                    ->label('Tgl Perolehan')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Terakhir Update')
+                    ->since()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
-                Tables\Filters\Filter::make('unit_id')
-                    ->form([
-                        Forms\Components\Select::make('unit_id')
-                            ->relationship('unit', 'name')
-                            ->label('Unit'),
+                Tables\Filters\SelectFilter::make('unit_id')
+                    ->relationship('unit', 'name')
+                    ->label('Unit')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('location_id')
+                    ->relationship('location', 'name')
+                    ->label('Lokasi')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->relationship('category', 'name')
+                    ->label('Kategori')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('tool_id')
+                    ->relationship('tool', 'name')
+                    ->label('Alat')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('year_id')
+                    ->relationship('year', 'year')
+                    ->label('Tahun')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('aktiva_id')
+                    ->relationship('aktiva', 'name')
+                    ->label('Aktiva')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'active' => 'Aktif',
+                        'inactive' => 'Tidak Aktif',
+                        'deleted' => 'Dihapus',
+                        'repaired' => 'Diperbaiki',
+                        'transferred' => 'Ditransfer',
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['unit_id'],
-                                fn (Builder $query, $unit_id): Builder => $query->whereRelation('unit', 'id', '=', $unit_id),
-                            );
-                    }),
-                Tables\Filters\Filter::make('location_id')
-                    ->form([
-                        Forms\Components\Select::make('location_id')
-                            ->relationship('location', 'name')
-                            ->label('Lokasi'),
+                    ->label('Status'),
+                Tables\Filters\SelectFilter::make('condition')
+                    ->options([
+                        'bagus' => 'Bagus',
+                        'rusak' => 'Rusak',
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['location_id'],
-                                fn (Builder $query, $location_id): Builder => $query->whereRelation('location', 'id', '=', $location_id),
-                            );
-                    }),
-                Tables\Filters\Filter::make('category_id')
-                    ->form([
-                        Forms\Components\Select::make('category_id')
-                            ->relationship('category', 'name')
-                            ->label('Kategori'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['category_id'],
-                                fn (Builder $query, $category_id): Builder => $query->whereRelation('category', 'id', '=', $category_id),
-                            );
-                    }),
-                Tables\Filters\Filter::make('tool_id')
-                    ->form([
-                        Forms\Components\Select::make('tool_id')
-                            ->relationship('tool', 'name')
-                            ->label('Alat'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['tool_id'],
-                                fn (Builder $query, $tool_id): Builder => $query->whereRelation('tool', 'id', '=', $tool_id),
-                            );
-                    }),
-                Tables\Filters\Filter::make('year_id')
-                    ->form([
-                        Forms\Components\Select::make('year_id')
-                            ->relationship('year', 'year')
-                            ->label('Tahun'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['year_id'],
-                                fn (Builder $query, $year_id): Builder => $query->whereRelation('year', 'id', '=', $year_id),
-                            );
-                    }),
-                Tables\Filters\Filter::make('aktiva_id')
-                    ->form([
-                        Forms\Components\Select::make('aktiva_id')
-                            ->relationship('aktiva', 'name')
-                            ->label('Aktiva'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['aktiva_id'],
-                                fn (Builder $query, $aktiva_id): Builder => $query->whereRelation('aktiva', 'id', '=', $aktiva_id),
-                            );
-                    }),
-
+                    ->label('Kondisi'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -416,28 +443,117 @@ class AssetResource extends Resource
     {
         return $infolist
             ->schema([
-                ImageEntry::make('image')
-                    ->label('Gambar Aset')
-                    ->columnSpanFull(),
-                TextEntry::make('name')
-                    ->label('Nama Aset'),
-                TextEntry::make('brand')
-                    ->label('Merk'),
-                TextEntry::make('entries_number')
-                    ->label('Nomor Urut'),
-                TextEntry::make('description')
-                    ->label('Deskripsi'),
-                TextEntry::make('price')
-                    ->formatStateUsing(fn ($state) => 'Rp. ' . number_format($state, 0, ',', '.'))
-                    ->label('Harga'),
-                TextEntry::make('aquisition')
-                    ->label('Pemilik'),
-                TextEntry::make('aquisition_date')
-                    ->label('Tanggal Perolehan'),
-                TextEntry::make('status')
-                    ->label('Status'),
-                TextEntry::make('condition')
-                    ->label('Kondisi'),
+                \Filament\Infolists\Components\Section::make('Informasi Aset')
+                    ->schema([
+                        ImageEntry::make('image')
+                            ->label('Foto Aset')
+                            ->size(200)
+                            ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random&size=200'),
+
+                        \Filament\Infolists\Components\Grid::make(3)
+                            ->schema([
+                                TextEntry::make('name')
+                                    ->label('Nama Aset')
+                                    ->weight('bold')
+                                    ->size('lg'),
+                                TextEntry::make('entries_number')
+                                    ->label('Nomor Aset')
+                                    ->badge()
+                                    ->color('primary'),
+                                TextEntry::make('brand')
+                                    ->label('Merk'),
+                            ]),
+
+                        TextEntry::make('description')
+                            ->label('Deskripsi')
+                            ->columnSpanFull(),
+                    ]),
+
+                \Filament\Infolists\Components\Section::make('Status & Kondisi')
+                    ->schema([
+                        \Filament\Infolists\Components\Grid::make(4)
+                            ->schema([
+                                TextEntry::make('status')
+                                    ->label('Status')
+                                    ->badge()
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'active' => 'Aktif',
+                                        'inactive' => 'Tidak Aktif',
+                                        'deleted' => 'Dihapus',
+                                        'repaired' => 'Diperbaiki',
+                                        'transferred' => 'Ditransfer',
+                                        default => $state,
+                                    })
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'active' => 'success',
+                                        'inactive' => 'danger',
+                                        'deleted' => 'warning',
+                                        'repaired' => 'gray',
+                                        'transferred' => 'info',
+                                        default => 'gray',
+                                    }),
+                                TextEntry::make('condition')
+                                    ->label('Kondisi')
+                                    ->badge()
+                                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                                        'bagus' => 'Bagus',
+                                        'rusak' => 'Rusak',
+                                        default => $state,
+                                    })
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'bagus' => 'success',
+                                        'rusak' => 'danger',
+                                        default => 'gray',
+                                    }),
+                                TextEntry::make('portability')
+                                    ->label('Tipe')
+                                    ->badge()
+                                    ->color('gray'),
+                                TextEntry::make('price')
+                                    ->label('Harga')
+                                    ->money('IDR', locale: 'id'),
+                            ]),
+                    ]),
+
+                \Filament\Infolists\Components\Section::make('Lokasi & Kategori')
+                    ->schema([
+                        \Filament\Infolists\Components\Grid::make(3)
+                            ->schema([
+                                TextEntry::make('unit.name')
+                                    ->label('Unit')
+                                    ->icon('heroicon-o-building-office'),
+                                TextEntry::make('location.name')
+                                    ->label('Lokasi')
+                                    ->icon('heroicon-o-map-pin'),
+                                TextEntry::make('category.name')
+                                    ->label('Kategori')
+                                    ->icon('heroicon-o-tag'),
+                                TextEntry::make('tool.name')
+                                    ->label('Jenis Barang')
+                                    ->icon('heroicon-o-wrench'),
+                                TextEntry::make('aktiva.name')
+                                    ->label('Aktiva')
+                                    ->icon('heroicon-o-document-text'),
+                                TextEntry::make('year.year')
+                                    ->label('Tahun')
+                                    ->icon('heroicon-o-calendar'),
+                            ]),
+                    ]),
+
+                \Filament\Infolists\Components\Section::make('Informasi Perolehan')
+                    ->schema([
+                        \Filament\Infolists\Components\Grid::make(3)
+                            ->schema([
+                                TextEntry::make('aquisition')
+                                    ->label('Pemilik/Sumber'),
+                                TextEntry::make('aquisition_date')
+                                    ->label('Tanggal Perolehan')
+                                    ->date('d F Y'),
+                                TextEntry::make('updated_at')
+                                    ->label('Terakhir Diupdate')
+                                    ->since(),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -457,6 +573,7 @@ class AssetResource extends Resource
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
-            ]);
+            ])
+            ->notTransferred(); // Exclude aset yang sudah ditransfer
     }
 }

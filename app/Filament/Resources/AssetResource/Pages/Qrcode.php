@@ -19,10 +19,12 @@ class Qrcode extends Page
     {
         $user = Auth::user();
 
+        $query = Asset::with(['unit', 'location', 'category', 'tool', 'year', 'aktiva']);
+
         if ($user->hasRole('super_admin')) {
-            $this->assets = Asset::all();
-        } else if ($user->hasRole('Unit')) {
-            $this->assets = Asset::where('user_id', $user->id)->get();
+            $this->assets = $query->get();
+        } elseif ($user->hasRole('Unit')) {
+            $this->assets = $query->where('user_id', $user->id)->get();
         } else {
             $this->assets = collect();
         }
