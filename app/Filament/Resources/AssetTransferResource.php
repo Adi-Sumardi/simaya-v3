@@ -188,7 +188,7 @@ class AssetTransferResource extends Resource
                                             ->notTransferred()
                                             ->get()
                                             ->mapWithKeys(fn ($asset) => [
-                                                $asset->id => $asset->name
+                                                $asset->id => "{$asset->name} ({$asset->entries_number}) - {$asset->brand}"
                                             ]);
                                     })
                                     ->required()
@@ -198,35 +198,11 @@ class AssetTransferResource extends Resource
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->columnSpan(2),
 
-                                Forms\Components\Placeholder::make('asset_info')
-                                    ->label('Info Aset')
-                                    ->content(function (callable $get) {
-                                        $asset = Asset::find($get('asset_id'));
-                                        if (!$asset) return '-';
-
-                                        $status = match($asset->status) {
-                                            'active' => '🟢 Aktif',
-                                            'inactive' => '🔴 Tidak Aktif',
-                                            'repaired' => '🟡 Diperbaiki',
-                                            'deleted' => '⚫ Dihapus',
-                                            default => $asset->status,
-                                        };
-
-                                        $condition = match($asset->condition) {
-                                            'bagus' => '✅ Bagus',
-                                            'rusak' => '❌ Rusak',
-                                            default => $asset->condition,
-                                        };
-
-                                        return "No: {$asset->entries_number} | {$status} | {$condition} | Merk: {$asset->brand}";
-                                    })
-                                    ->columnSpan(3),
-
                                 Forms\Components\Textarea::make('condition_notes')
-                                    ->label('Catatan')
+                                    ->label('Catatan Kondisi')
                                     ->rows(1)
                                     ->placeholder('Catatan kondisi (opsional)')
-                                    ->columnSpan(2),
+                                    ->columnSpan(1),
 
                                 Forms\Components\FileUpload::make('photo_before')
                                     ->label('Foto')
@@ -235,7 +211,7 @@ class AssetTransferResource extends Resource
                                     ->maxSize(2048)
                                     ->columnSpan(1),
                             ])
-                            ->columns(8)
+                            ->columns(4)
                             ->defaultItems(0)
                             ->addActionLabel('+ Tambah Aset')
                             ->reorderable(false)
@@ -243,10 +219,10 @@ class AssetTransferResource extends Resource
                                 isset($state['asset_id']) ? Asset::find($state['asset_id'])?->name : 'Pilih Aset'
                             )
                             ->collapsible()
-                            ->collapsed()
                             ->cloneable(false)
                             ->required()
-                            ->minItems(1),
+                            ->minItems(1)
+                            ->grid(2),
 
                         Forms\Components\Placeholder::make('selected_count')
                             ->label('')

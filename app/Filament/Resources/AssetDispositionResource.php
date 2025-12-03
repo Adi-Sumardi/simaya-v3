@@ -181,7 +181,7 @@ class AssetDispositionResource extends Resource
                                         return Asset::transferred()
                                             ->get()
                                             ->mapWithKeys(fn ($asset) => [
-                                                $asset->id => "{$asset->name} ({$asset->entries_number})"
+                                                $asset->id => "{$asset->name} ({$asset->entries_number}) - {$asset->brand}"
                                             ]);
                                     })
                                     ->required()
@@ -190,24 +190,6 @@ class AssetDispositionResource extends Resource
                                     ->distinct()
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->columnSpan(2),
-
-                                Forms\Components\Placeholder::make('asset_info')
-                                    ->label('Info Aset')
-                                    ->content(function (callable $get) {
-                                        $asset = Asset::find($get('asset_id'));
-                                        if (!$asset) return '-';
-
-                                        $condition = match($asset->condition) {
-                                            'bagus' => 'Bagus',
-                                            'rusak' => 'Rusak',
-                                            default => $asset->condition,
-                                        };
-
-                                        $price = 'Rp ' . number_format($asset->price ?? 0, 0, ',', '.');
-
-                                        return "Kondisi: {$condition} | Merk: {$asset->brand} | Nilai: {$price}";
-                                    })
-                                    ->columnSpan(3),
 
                                 Forms\Components\TextInput::make('estimated_value')
                                     ->label('Estimasi Nilai')
@@ -229,7 +211,7 @@ class AssetDispositionResource extends Resource
                                     ->maxSize(2048)
                                     ->columnSpan(1),
                             ])
-                            ->columns(9)
+                            ->columns(6)
                             ->defaultItems(0)
                             ->addActionLabel('+ Tambah Aset')
                             ->reorderable(false)
@@ -237,10 +219,10 @@ class AssetDispositionResource extends Resource
                                 isset($state['asset_id']) ? Asset::find($state['asset_id'])?->name : 'Pilih Aset'
                             )
                             ->collapsible()
-                            ->collapsed()
                             ->cloneable(false)
                             ->required()
-                            ->minItems(1),
+                            ->minItems(1)
+                            ->grid(2),
 
                         Forms\Components\Placeholder::make('selected_count')
                             ->label('')
