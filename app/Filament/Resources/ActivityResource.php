@@ -30,7 +30,7 @@ class ActivityResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 $user = Auth::user();
 
-                if ($user->hasRole('Super Admin')) {
+                if ($user->hasRole('super_admin')) {
                     return;
                 }
 

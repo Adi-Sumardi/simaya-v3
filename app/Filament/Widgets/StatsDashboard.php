@@ -3,27 +3,121 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Asset;
-use App\Models\Category;
+use App\Models\AssetTransfer;
+use App\Models\AssetDisposition;
 use App\Models\Location;
-use App\Models\User;
+use App\Models\Unit;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Auth;
 
 class StatsDashboard extends BaseWidget
 {
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
+        $user = Auth::user();
+
+        // Role Unit: stats untuk unit mereka saja
+        if ($user->hasRole('Unit') && $user->unit_id) {
+            return $this->getUnitStats($user->unit_id);
+        }
+
+        // Role Admin/Manager: stats keseluruhan
+        return $this->getAdminStats();
+    }
+
+    protected function getAdminStats(): array
+    {
+        $totalAssets = Asset::notTransferred()->count();
+        $totalValue = Asset::notTransferred()->sum('price');
+        $goodAssets = Asset::notTransferred()->where('condition', 'bagus')->count();
+        $damagedAssets = Asset::notTransferred()->where('condition', 'rusak')->count();
+        $activeAssets = Asset::notTransferred()->where('status', 'active')->count();
+        $pendingTransfers = AssetTransfer::where('status', 'pending')->count();
+        $totalUnits = Unit::count();
+        $totalLocations = Location::count();
+
+        // Persentase
+        $goodPercent = $totalAssets > 0 ? round($goodAssets / $totalAssets * 100) : 0;
+        $activePercent = $totalAssets > 0 ? round($activeAssets / $totalAssets * 100) : 0;
+
         return [
-            Stat::make('Total Asset', Asset::count())
-                ->label('Total Asset'),
-            Stat::make('Asset Bagus', Asset::where('condition', 'Bagus')->count())
-                ->label('Asset Bagus'),
-            Stat::make('Asset Rusak', Asset::where('condition', 'Rusak')->count())
-                ->label('Asset Rusak'),
-            Stat::make('Nilai Asset', function () {
-                    $total = Asset::sum('price');
-                    return 'Rp ' . number_format($total, 0, ',', '.');
-                })->label('Nilai Asset'),
+            Stat::make('Total Aset', number_format($totalAssets))
+                ->description("{$totalUnits} Unit | {$totalLocations} Lokasi")
+                ->descriptionIcon('heroicon-o-cube')
+                ->color('primary')
+                ->chart($this->getAssetTrend()),
+
+            Stat::make('Nilai Total Aset', 'Rp ' . number_format($totalValue, 0, ',', '.'))
+                ->description('Total nilai semua aset aktif')
+                ->descriptionIcon('heroicon-o-banknotes')
+                ->color('success'),
+
+            Stat::make('Kondisi Bagus', number_format($goodAssets))
+                ->description("{$goodPercent}% dari total | Rusak: {$damagedAssets}")
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color($damagedAssets > 10 ? 'warning' : 'success'),
+
+            Stat::make('Aset Aktif', number_format($activeAssets))
+                ->description("{$activePercent}% dari total aset")
+                ->descriptionIcon('heroicon-o-bolt')
+                ->color('info'),
+
+            Stat::make('Transfer Pending', $pendingTransfers)
+                ->description($pendingTransfers > 0 ? 'Menunggu persetujuan' : 'Tidak ada pending')
+                ->descriptionIcon('heroicon-o-arrow-path-rounded-square')
+                ->color($pendingTransfers > 0 ? 'warning' : 'gray'),
+
+            Stat::make('Aset Rusak', number_format($damagedAssets))
+                ->description('Perlu perhatian')
+                ->descriptionIcon('heroicon-o-exclamation-triangle')
+                ->color($damagedAssets > 0 ? 'danger' : 'success'),
         ];
+    }
+
+    protected function getUnitStats(int $unitId): array
+    {
+        $unit = Unit::find($unitId);
+        $unitName = $unit?->name ?? 'Unit';
+
+        $totalAssets = Asset::where('unit_id', $unitId)->notTransferred()->count();
+        $totalValue = Asset::where('unit_id', $unitId)->notTransferred()->sum('price');
+        $goodAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'bagus')->count();
+        $damagedAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'rusak')->count();
+        $activeAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('status', 'active')->count();
+        $totalLocations = Location::where('unit_id', $unitId)->count();
+
+        // Persentase
+        $goodPercent = $totalAssets > 0 ? round($goodAssets / $totalAssets * 100) : 0;
+
+        return [
+            Stat::make('Total Aset ' . $unitName, number_format($totalAssets))
+                ->description("{$totalLocations} Lokasi")
+                ->descriptionIcon('heroicon-o-cube')
+                ->color('primary'),
+
+            Stat::make('Nilai Aset', 'Rp ' . number_format($totalValue, 0, ',', '.'))
+                ->description('Total nilai aset unit')
+                ->descriptionIcon('heroicon-o-banknotes')
+                ->color('success'),
+
+            Stat::make('Kondisi Bagus', number_format($goodAssets))
+                ->description("{$goodPercent}% | Rusak: {$damagedAssets}")
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color($damagedAssets > 5 ? 'warning' : 'success'),
+
+            Stat::make('Aset Aktif', number_format($activeAssets))
+                ->description('Aset yang aktif digunakan')
+                ->descriptionIcon('heroicon-o-bolt')
+                ->color('info'),
+        ];
+    }
+
+    protected function getAssetTrend(): array
+    {
+        // Simple trend data (last 7 data points)
+        return [7, 3, 4, 5, 6, 3, 5];
     }
 }

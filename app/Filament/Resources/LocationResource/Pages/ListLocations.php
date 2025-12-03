@@ -28,7 +28,7 @@ class ListLocations extends ListRecords
     protected function getHeaderActions(): array
     {
         $user = Auth::user();
-        $isAdmin = $user->hasRole(['Super Admin', 'Manajer', 'Manager']);
+        $isAdmin = $user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag']);
 
         return [
             // Export untuk Audit/Sertifikasi

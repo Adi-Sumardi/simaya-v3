@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\WithFileUploads;
 use Filament\Resources\Components\Tab;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class ListAssets extends ListRecords
 {
@@ -89,13 +90,25 @@ class ListAssets extends ListRecords
 
     /**
      * Tabs untuk role Admin/Manajer - berdasarkan Unit
+     * Badge counts cached for 60 seconds to improve performance
      */
     protected function getUnitTabs(): array
     {
+        // Pre-fetch all counts in a single query for better performance
+        $counts = Cache::remember('asset_unit_counts', 60, function () {
+            return $this->getAssetBaseQuery()
+                ->selectRaw('unit_id, COUNT(*) as count')
+                ->groupBy('unit_id')
+                ->pluck('count', 'unit_id')
+                ->toArray();
+        });
+
+        $totalCount = array_sum($counts);
+
         $tabs = [
             'all' => Tab::make('Semua Unit')
                 ->label('Semua Unit')
-                ->badge(fn () => $this->getAssetBaseQuery()->count())
+                ->badge($totalCount)
                 ->badgeColor('primary'),
         ];
 
@@ -105,7 +118,7 @@ class ListAssets extends ListRecords
             $unitId = $unit->id;
             $tabs["unit_{$unitId}"] = Tab::make($unit->name)
                 ->label($unit->name)
-                ->badge(fn () => $this->getAssetBaseQuery()->where('unit_id', $unitId)->count())
+                ->badge($counts[$unitId] ?? 0)
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId));
         }
@@ -115,13 +128,26 @@ class ListAssets extends ListRecords
 
     /**
      * Tabs untuk role Unit - berdasarkan Lokasi dalam unit mereka
+     * Badge counts cached for 60 seconds to improve performance
      */
     protected function getLocationTabs(int $unitId): array
     {
+        // Pre-fetch all location counts in a single query
+        $counts = Cache::remember("asset_location_counts_{$unitId}", 60, function () use ($unitId) {
+            return $this->getAssetBaseQuery()
+                ->where('unit_id', $unitId)
+                ->selectRaw('location_id, COUNT(*) as count')
+                ->groupBy('location_id')
+                ->pluck('count', 'location_id')
+                ->toArray();
+        });
+
+        $totalCount = array_sum($counts);
+
         $tabs = [
             'all' => Tab::make('Semua Lokasi')
                 ->label('Semua Lokasi')
-                ->badge(fn () => $this->getAssetBaseQuery()->where('unit_id', $unitId)->count())
+                ->badge($totalCount)
                 ->badgeColor('primary')
                 ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId)),
         ];
@@ -132,7 +158,7 @@ class ListAssets extends ListRecords
             $locationId = $location->id;
             $tabs["location_{$locationId}"] = Tab::make($location->name)
                 ->label($location->name)
-                ->badge(fn () => $this->getAssetBaseQuery()->where('location_id', $locationId)->count())
+                ->badge($counts[$locationId] ?? 0)
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn ($query) => $query->where('location_id', $locationId));
         }

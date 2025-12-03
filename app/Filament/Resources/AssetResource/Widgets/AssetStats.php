@@ -15,8 +15,8 @@ class AssetStats extends BaseWidget
     public ?int $locationId = null;
     public int $filterVersion = 0;
 
-    // Polling interval - refresh setiap 15 detik untuk data real-time
-    protected static ?string $pollingInterval = '15s';
+    // Disable polling to improve performance - stats will refresh on page load/tab change
+    protected static ?string $pollingInterval = null;
 
     protected function getListeners(): array
     {

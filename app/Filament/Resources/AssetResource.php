@@ -40,7 +40,7 @@ class AssetResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Grid::make()
+                Forms\Components\Section::make('Informasi Aset')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->required()
@@ -51,37 +51,18 @@ class AssetResource extends Resource
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(1000),
-                        ])->columns(2),
-                Forms\Components\Grid::make()
-                        ->schema([
-                            Forms\Components\TextInput::make('brand')
-                                ->required()
-                                ->label('Merk')
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('description')
-                                ->label('Deskripsi')
-                                ->required()
-                                ->maxLength(555),
-                            ])->columns(2),
-                Forms\Components\Grid::make()
-                    ->schema([
-                        Forms\Components\TextInput::make('price')
-                            ->label('Harga')
+                        Forms\Components\TextInput::make('brand')
                             ->required()
-                            ->label('Harga')
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(90000000000),
-                        Forms\Components\TextInput::make('aquisition')
-                            ->label('Pemilik')
-                            ->required()
-                            ->label('Pemilik')
+                            ->label('Merk')
                             ->maxLength(255),
-                        Forms\Components\DatePicker::make('aquisition_date')
+                        Forms\Components\TextInput::make('description')
+                            ->label('Deskripsi')
                             ->required()
-                            ->label('Tanggal Perolehan')
-                            ->date()
-                            ->placeholder('YYYY-MM-DD'),
+                            ->maxLength(555),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Status & Kondisi')
+                    ->schema([
                         Forms\Components\Select::make('status')
                             ->required()
                             ->searchable()
@@ -109,6 +90,29 @@ class AssetResource extends Resource
                                 'fixtures' => 'Fixtures',
                             ])
                             ->default('portable'),
+                    ])->columns(3),
+
+                Forms\Components\Section::make('Informasi Perolehan')
+                    ->schema([
+                        Forms\Components\TextInput::make('price')
+                            ->label('Harga')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(90000000000),
+                        Forms\Components\TextInput::make('aquisition')
+                            ->label('Pemilik')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\DatePicker::make('aquisition_date')
+                            ->required()
+                            ->label('Tanggal Perolehan')
+                            ->date()
+                            ->placeholder('YYYY-MM-DD'),
+                    ])->columns(3),
+
+                Forms\Components\Section::make('Lokasi & Kategori')
+                    ->schema([
                         Forms\Components\Hidden::make('user_id')
                             ->default(Auth::user()->id),
                         Forms\Components\Select::make('unit_id')
@@ -117,7 +121,6 @@ class AssetResource extends Resource
                             ->preload()
                             ->required()
                             ->reactive(),
-
                         Forms\Components\Select::make('location_id')
                             ->required()
                             ->label('Lokasi')
@@ -136,40 +139,35 @@ class AssetResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(),
-
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
                             ->label('Kategori')
                             ->searchable()
                             ->preload()
                             ->required(),
-
                         Forms\Components\Select::make('year_id')
                             ->relationship('year', 'year')
                             ->label('Tahun')
                             ->searchable()
                             ->preload()
                             ->required(),
-
                         Forms\Components\Select::make('aktiva_id')
                             ->relationship('aktiva', 'name')
                             ->label('Aktiva')
                             ->searchable()
                             ->preload()
                             ->required(),
-                ])->columns(3),
+                    ])->columns(3),
 
-                Forms\Components\Grid::make()
+                Forms\Components\Section::make('Foto Aset')
                     ->schema([
                         Forms\Components\FileUpload::make('image')
                             ->preserveFilenames()
                             ->directory('assets')
                             ->label('Upload Image')
                             ->maxSize(1024)
-                            ->columnSpanFull()
                             ->image(),
-                ])->columns(1),
-
+                    ]),
             ]);
     }
 
@@ -182,7 +180,7 @@ class AssetResource extends Resource
                 // Eager load semua relasi untuk menghindari N+1 query
                 $query->with(['unit', 'location', 'aktiva', 'category', 'tool', 'year']);
 
-                if ($user->hasRole('Super Admin') || $user->hasRole(['Manajer', 'Manager'])) {
+                if ($user->hasRole('super_admin') || $user->hasRole(['Manajer', 'Manager', 'Kabag'])) {
                     return;
                 }
 

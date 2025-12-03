@@ -54,7 +54,7 @@ class AssetTransferResource extends Resource
                                 $user = Auth::user();
 
                                 // Admin & Manajer bisa lihat semua unit
-                                if ($user->hasRole(['Super Admin', 'Manajer', 'Manager'])) {
+                                if ($user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag'])) {
                                     return Unit::pluck('name', 'id');
                                 }
 
@@ -68,7 +68,7 @@ class AssetTransferResource extends Resource
                             ->default(function () {
                                 $user = Auth::user();
                                 // Auto-select unit untuk role Unit
-                                if (!$user->hasRole(['Super Admin', 'Manajer', 'Manager']) && $user->unit_id) {
+                                if (!$user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag']) && $user->unit_id) {
                                     return $user->unit_id;
                                 }
                                 return null;
@@ -80,7 +80,7 @@ class AssetTransferResource extends Resource
                             ->disabled(function () {
                                 $user = Auth::user();
                                 // Disable jika role Unit (sudah auto-select)
-                                return !$user->hasRole(['Super Admin', 'Manajer', 'Manager']) && $user->unit_id;
+                                return !$user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag']) && $user->unit_id;
                             })
                             ->dehydrated(true)
                             ->afterStateUpdated(function ($set) {
@@ -331,7 +331,7 @@ class AssetTransferResource extends Resource
                     ->modalHeading('Setujui Transfer Aset')
                     ->modalDescription('Apakah Anda yakin ingin menyetujui transfer aset ini?')
                     ->visible(fn (AssetTransfer $record) =>
-                        $record->isPending() && Auth::user()->hasRole(['Super Admin', 'Manajer', 'Manager'])
+                        $record->isPending() && Auth::user()->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag'])
                     )
                     ->action(function (AssetTransfer $record) {
                         if ($record->approve(Auth::user())) {
@@ -357,7 +357,7 @@ class AssetTransferResource extends Resource
                             ->rows(3),
                     ])
                     ->visible(fn (AssetTransfer $record) =>
-                        $record->isPending() && Auth::user()->hasRole(['Super Admin', 'Manajer', 'Manager'])
+                        $record->isPending() && Auth::user()->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag'])
                     )
                     ->action(function (AssetTransfer $record, array $data) {
                         if ($record->reject(Auth::user(), $data['rejection_reason'])) {
@@ -378,7 +378,7 @@ class AssetTransferResource extends Resource
                     ->modalHeading('Selesaikan Transfer')
                     ->modalDescription('Aset akan dipindahkan ke lokasi tujuan. Pastikan semua aset sudah diterima dengan benar.')
                     ->visible(fn (AssetTransfer $record) =>
-                        $record->isApproved() && Auth::user()->hasRole(['Super Admin', 'Manajer', 'Manager'])
+                        $record->isApproved() && Auth::user()->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag'])
                     )
                     ->action(function (AssetTransfer $record) {
                         if ($record->complete()) {
@@ -666,7 +666,7 @@ class AssetTransferResource extends Resource
     {
         $user = Auth::user();
 
-        if ($user && $user->hasRole(['Super Admin', 'Manajer', 'Manager'])) {
+        if ($user && $user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag'])) {
             $count = static::getModel()::where('status', 'pending')->count();
             return $count > 0 ? (string) $count : null;
         }

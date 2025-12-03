@@ -616,6 +616,6 @@ class AssetDispositionResource extends Resource
     public static function canAccess(): bool
     {
         $user = Auth::user();
-        return $user && $user->hasRole(['Super Admin', 'Manajer', 'Manager']);
+        return $user && $user->hasRole(['super_admin', 'Manajer', 'Manager', 'Kabag']);
     }
 }
