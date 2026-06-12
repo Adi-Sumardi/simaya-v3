@@ -28,6 +28,11 @@ class Location extends Model
         return $this->belongsTo(Unit::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function assets()
     {
         return $this->hasMany(Asset::class);
