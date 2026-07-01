@@ -52,13 +52,20 @@ export default function RootLayout({
         <Script id="pwa-service-worker" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                  console.log('SIMAYA Service Worker registered successfully');
-                }).catch(function(err) {
-                  console.error('SIMAYA Service Worker registration failed:', err);
-                });
-              });
+              const registerSW = () => {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(function(reg) {
+                    console.log('SIMAYA Service Worker registered successfully');
+                  })
+                  .catch(function(err) {
+                    console.error('SIMAYA Service Worker registration failed:', err);
+                  });
+              };
+              if (document.readyState === 'complete') {
+                registerSW();
+              } else {
+                window.addEventListener('load', registerSW);
+              }
             }
           `}
         </Script>

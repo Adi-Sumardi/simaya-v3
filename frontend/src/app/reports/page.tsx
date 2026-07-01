@@ -13,9 +13,9 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full">
         
         <header className="flex justify-between items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3">

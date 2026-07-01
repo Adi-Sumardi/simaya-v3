@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Pagination from "@/components/ui/Pagination";
 import Sidebar from "@/components/layout/Sidebar";
 import { api } from "@/lib/api";
+import { useToast } from "@/context/ToastContext";
 import { 
   Trash2, 
   Plus, 
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function DispositionsPage() {
+  const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "create">("list");
   const [selectedDisposition, setSelectedDisposition] = useState<any | null>(null);
@@ -95,22 +97,22 @@ export default function DispositionsPage() {
   const handleComplete = async (id: number) => {
     try {
       await api.post(`/dispositions/${id}/complete`);
-      alert("Disposisi berhasil diselesaikan!");
+      toast.success("Disposisi berhasil diselesaikan!");
       fetchAllData();
       setSelectedDisposition(null);
     } catch (err: any) {
-      alert(err.message || "Gagal menyelesaikan disposisi");
+      toast.error(err.message || "Gagal menyelesaikan disposisi");
     }
   };
 
   const handleCancel = async (id: number) => {
     try {
       await api.post(`/dispositions/${id}/cancel`);
-      alert("Disposisi berhasil dibatalkan!");
+      toast.success("Disposisi berhasil dibatalkan!");
       fetchAllData();
       setSelectedDisposition(null);
     } catch (err: any) {
-      alert(err.message || "Gagal membatalkan disposisi");
+      toast.error(err.message || "Gagal membatalkan disposisi");
     }
   };
 
@@ -135,7 +137,7 @@ export default function DispositionsPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedAssets.length === 0) {
-      alert("Mohon pilih minimal 1 aset untuk didisposisi!");
+      toast.warning("Mohon pilih minimal 1 aset untuk didisposisi!");
       return;
     }
 
@@ -161,7 +163,7 @@ export default function DispositionsPage() {
       }
 
       await api.post("/dispositions", payload);
-      alert("Disposisi berhasil diajukan!");
+      toast.success("Disposisi berhasil diajukan!");
       
       // Reset form
       setType("penghapusan");
@@ -177,17 +179,17 @@ export default function DispositionsPage() {
       setActiveTab("list");
       fetchAllData();
     } catch (err: any) {
-      alert(err.message || "Gagal mengajukan disposisi");
+      toast.error(err.message || "Gagal mengajukan disposisi");
     }
   };
 
 
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full">
         
         {/* Header */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">

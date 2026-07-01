@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Pagination from "@/components/ui/Pagination";
 import Sidebar from "@/components/layout/Sidebar";
 import { api } from "@/lib/api";
+import { useToast } from "@/context/ToastContext";
 import { 
   GitCompare, 
   Plus, 
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 
 export default function TransfersPage() {
+  const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"list" | "create">("list");
   const [selectedTransfer, setSelectedTransfer] = useState<any | null>(null);
@@ -103,34 +105,34 @@ export default function TransfersPage() {
   const handleApprove = async (id: number) => {
     try {
       await api.post(`/transfers/${id}/approve`);
-      alert("Mutasi berhasil disetujui!");
+      toast.success("Mutasi berhasil disetujui!");
       fetchAllData();
       setSelectedTransfer(null);
     } catch (err: any) {
-      alert(err.message || "Gagal menyetujui mutasi");
+      toast.error(err.message || "Gagal menyetujui mutasi");
     }
   };
 
   const handleReject = async (id: number, reasonText: string) => {
     try {
       await api.post(`/transfers/${id}/reject`, { reason: reasonText });
-      alert("Mutasi berhasil ditolak!");
+      toast.success("Mutasi berhasil ditolak!");
       fetchAllData();
       setSelectedTransfer(null);
       setRejectionModal(null);
     } catch (err: any) {
-      alert(err.message || "Gagal menolak mutasi");
+      toast.error(err.message || "Gagal menolak mutasi");
     }
   };
 
   const handleComplete = async (id: number) => {
     try {
       await api.post(`/transfers/${id}/complete`);
-      alert("Mutasi berhasil diselesaikan!");
+      toast.success("Mutasi berhasil diselesaikan!");
       fetchAllData();
       setSelectedTransfer(null);
     } catch (err: any) {
-      alert(err.message || "Gagal menyelesaikan mutasi");
+      toast.error(err.message || "Gagal menyelesaikan mutasi");
     }
   };
 
@@ -157,7 +159,7 @@ export default function TransfersPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromUnit || !fromLocation || !toLocation || repeaterItems.length === 0) {
-      alert("Mohon lengkapi seluruh field dan tambahkan minimal 1 aset!");
+      toast.warning("Mohon lengkapi seluruh field dan tambahkan minimal 1 aset!");
       return;
     }
 
@@ -172,7 +174,7 @@ export default function TransfersPage() {
       };
 
       await api.post("/transfers", payload);
-      alert("Mutasi berhasil diajukan!");
+      toast.success("Mutasi berhasil diajukan!");
       
       // Clear form
       setFromUnit("");
@@ -184,17 +186,17 @@ export default function TransfersPage() {
       setActiveTab("list");
       fetchAllData();
     } catch (err: any) {
-      alert(err.message || "Gagal mengajukan mutasi");
+      toast.error(err.message || "Gagal mengajukan mutasi");
     }
   };
 
 
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full">
         
         {/* Header */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
@@ -669,7 +671,7 @@ export default function TransfersPage() {
                 {["approved", "completed"].includes(selectedTransfer.status) && (
                   <button 
                     onClick={() => {
-                      alert("Membuka dialog cetak Berita Acara...");
+                      toast.info("Membuka dialog cetak Berita Acara...");
                       window.print();
                     }}
                     className="px-4 py-2.5 bg-background border border-border-peach hover:border-primary/50 text-foreground/75 hover:text-primary rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"

@@ -340,17 +340,17 @@ export default function AssetsPage() {
         unit_id: Number(bulkUnit),
         location_id: Number(bulkLocation)
       });
-      alert("Unit dan Lokasi aset berhasil diperbarui secara massal!");
+      toast.success("Unit dan Lokasi aset berhasil diperbarui secara massal!");
       setSelectedIds([]);
       setBulkUnitLocationModal(false);
       fetchAllData();
     } catch (err: any) {
-      alert(err.message || "Gagal memperbarui aset massal");
+      toast.error(err.message || "Gagal memperbarui aset massal");
     }
   };
 
   const handleExportExcel = () => {
-    alert("Unduhan asset.xlsx dimulai...");
+    toast.info("Unduhan asset.xlsx dimulai...");
   };
 
   // Calculate total across all units workspace-wide
@@ -365,10 +365,10 @@ export default function AssetsPage() {
   };
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full relative">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full relative">
         
         {/* Header */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
@@ -1504,7 +1504,7 @@ export default function AssetsPage() {
               <p className="text-[10px] text-foreground/45 mt-1">Unggah file foto pendukung untuk {selectedIds.length} aset terpilih.</p>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); alert("Foto massal diunggah!"); setSelectedIds([]); setBulkPhotoModal(false); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); toast.success("Foto massal berhasil diunggah!"); setSelectedIds([]); setBulkPhotoModal(false); }} className="flex flex-col gap-4">
               <div className="border-2 border-dashed border-border-peach hover:border-primary rounded-2xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-background/50">
                 <Camera className="w-8 h-8 text-foreground/30" />
                 <span className="text-xs font-bold text-foreground/50">Klik untuk mencari file</span>

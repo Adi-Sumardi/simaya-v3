@@ -126,7 +126,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       {/* Navigation Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen} 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       />
 
       {/* Main Dashboard Area */}
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full animate-in fade-in duration-300">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full animate-in fade-in duration-300">
         
         {/* Header Section */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">

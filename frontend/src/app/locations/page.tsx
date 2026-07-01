@@ -167,10 +167,10 @@ export default function LocationsPage() {
   }, [filteredRooms, currentPage, perPage]);
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-x-hidden">
+    <div className="flex bg-background h-screen overflow-hidden relative">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto h-full w-full">
         
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-3">
@@ -513,7 +513,7 @@ export default function LocationsPage() {
             <div className="flex justify-between items-center flex-wrap gap-2 pt-4 border-t border-border-peach/50 flex-shrink-0">
               <div className="flex gap-2 flex-wrap">
                 <button 
-                  onClick={() => alert(`Unduhan Aset-${selectedLocation.name.replace(/\s+/g, '-')}-2026-06-12.xlsx dimulai...`)}
+                  onClick={() => toast.info(`Unduhan Aset-${selectedLocation.name.replace(/\s+/g, '-')}-2026-06-12.xlsx dimulai...`)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
                 >
                   <FileText className="w-4 h-4" />
@@ -529,7 +529,7 @@ export default function LocationsPage() {
                 <button 
                   onClick={() => {
                     if (selectedLocation.assets.length === 0) {
-                      alert("Tidak ada aset di lokasi ini untuk dicetak!");
+                      toast.warning("Tidak ada aset di lokasi ini untuk dicetak!");
                       return;
                     }
                     setAssetsQrModal(selectedLocation);
