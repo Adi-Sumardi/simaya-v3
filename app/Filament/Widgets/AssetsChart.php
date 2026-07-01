@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\Unit;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AssetsChart extends ChartWidget
@@ -38,16 +39,23 @@ class AssetsChart extends ChartWidget
 
     protected function getUnitData(): array
     {
-        $dataPerUnit = Asset::query()
-            ->notTransferred()
-            ->select('units.name as unit_name', DB::raw('COUNT(assets.id) as total'))
-            ->join('units', 'assets.unit_id', '=', 'units.id')
-            ->groupBy('units.id', 'units.name')
-            ->orderByDesc('total')
-            ->get();
+        $cachedData = Cache::remember('dashboard_assets_by_unit', 300, function () {
+            $dataPerUnit = Asset::query()
+                ->notTransferred()
+                ->select('units.name as unit_name', DB::raw('COUNT(assets.id) as total'))
+                ->join('units', 'assets.unit_id', '=', 'units.id')
+                ->groupBy('units.id', 'units.name')
+                ->orderByDesc('total')
+                ->get();
 
-        $labels = $dataPerUnit->pluck('unit_name')->toArray();
-        $values = $dataPerUnit->pluck('total')->toArray();
+            return [
+                'labels' => $dataPerUnit->pluck('unit_name')->toArray(),
+                'values' => $dataPerUnit->pluck('total')->toArray(),
+            ];
+        });
+
+        $labels = $cachedData['labels'];
+        $values = $cachedData['values'];
 
         return [
             'labels' => $labels,
@@ -67,17 +75,24 @@ class AssetsChart extends ChartWidget
         $unit = Unit::find($unitId);
         static::$heading = 'Distribusi Aset per Lokasi - ' . ($unit?->name ?? 'Unit');
 
-        $dataPerLocation = Asset::query()
-            ->where('assets.unit_id', $unitId)
-            ->notTransferred()
-            ->select('locations.name as location_name', DB::raw('COUNT(assets.id) as total'))
-            ->join('locations', 'assets.location_id', '=', 'locations.id')
-            ->groupBy('locations.id', 'locations.name')
-            ->orderByDesc('total')
-            ->get();
+        $cachedData = Cache::remember("dashboard_assets_by_location_{$unitId}", 300, function () use ($unitId) {
+            $dataPerLocation = Asset::query()
+                ->where('assets.unit_id', $unitId)
+                ->notTransferred()
+                ->select('locations.name as location_name', DB::raw('COUNT(assets.id) as total'))
+                ->join('locations', 'assets.location_id', '=', 'locations.id')
+                ->groupBy('locations.id', 'locations.name')
+                ->orderByDesc('total')
+                ->get();
 
-        $labels = $dataPerLocation->pluck('location_name')->toArray();
-        $values = $dataPerLocation->pluck('total')->toArray();
+            return [
+                'labels' => $dataPerLocation->pluck('location_name')->toArray(),
+                'values' => $dataPerLocation->pluck('total')->toArray(),
+            ];
+        });
+
+        $labels = $cachedData['labels'];
+        $values = $cachedData['values'];
 
         return [
             'labels' => $labels,

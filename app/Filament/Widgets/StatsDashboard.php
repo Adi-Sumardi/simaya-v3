@@ -10,6 +10,7 @@ use App\Models\Unit;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class StatsDashboard extends BaseWidget
 {
@@ -30,27 +31,35 @@ class StatsDashboard extends BaseWidget
 
     protected function getAdminStats(): array
     {
-        $totalAssets = Asset::notTransferred()->count();
-        $totalValue = Asset::notTransferred()->sum('price');
-        $goodAssets = Asset::notTransferred()->where('condition', 'bagus')->count();
-        $damagedAssets = Asset::notTransferred()->where('condition', 'rusak')->count();
-        $activeAssets = Asset::notTransferred()->where('status', 'active')->count();
-        $pendingTransfers = AssetTransfer::where('status', 'pending')->count();
-        $totalUnits = Unit::count();
-        $totalLocations = Location::count();
+        $cachedData = Cache::remember('dashboard_admin_stats', 300, function () {
+            $totalAssets = Asset::notTransferred()->count();
+            return [
+                'totalAssets' => $totalAssets,
+                'totalValue' => Asset::notTransferred()->sum('price'),
+                'goodAssets' => Asset::notTransferred()->where('condition', 'bagus')->count(),
+                'damagedAssets' => Asset::notTransferred()->where('condition', 'rusak')->count(),
+                'activeAssets' => Asset::notTransferred()->where('status', 'active')->count(),
+                'pendingTransfers' => AssetTransfer::where('status', 'pending')->count(),
+                'totalUnits' => Unit::count(),
+                'totalLocations' => Location::count(),
+            ];
+        });
 
-        // Persentase
+        $totalAssets = $cachedData['totalAssets'];
+        $goodAssets = $cachedData['goodAssets'];
+        $damagedAssets = $cachedData['damagedAssets'];
+        $activeAssets = $cachedData['activeAssets'];
         $goodPercent = $totalAssets > 0 ? round($goodAssets / $totalAssets * 100) : 0;
         $activePercent = $totalAssets > 0 ? round($activeAssets / $totalAssets * 100) : 0;
 
         return [
             Stat::make('Total Aset', number_format($totalAssets))
-                ->description("{$totalUnits} Unit | {$totalLocations} Lokasi")
+                ->description("{$cachedData['totalUnits']} Unit | {$cachedData['totalLocations']} Lokasi")
                 ->descriptionIcon('heroicon-o-cube')
                 ->color('primary')
                 ->chart($this->getAssetTrend()),
 
-            Stat::make('Nilai Total Aset', 'Rp ' . number_format($totalValue, 0, ',', '.'))
+            Stat::make('Nilai Total Aset', 'Rp ' . number_format($cachedData['totalValue'], 0, ',', '.'))
                 ->description('Total nilai semua aset aktif')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success'),
@@ -65,10 +74,10 @@ class StatsDashboard extends BaseWidget
                 ->descriptionIcon('heroicon-o-bolt')
                 ->color('info'),
 
-            Stat::make('Transfer Pending', $pendingTransfers)
-                ->description($pendingTransfers > 0 ? 'Menunggu persetujuan' : 'Tidak ada pending')
+            Stat::make('Transfer Pending', $cachedData['pendingTransfers'])
+                ->description($cachedData['pendingTransfers'] > 0 ? 'Menunggu persetujuan' : 'Tidak ada pending')
                 ->descriptionIcon('heroicon-o-arrow-path-rounded-square')
-                ->color($pendingTransfers > 0 ? 'warning' : 'gray'),
+                ->color($cachedData['pendingTransfers'] > 0 ? 'warning' : 'gray'),
 
             Stat::make('Aset Rusak', number_format($damagedAssets))
                 ->description('Perlu perhatian')
@@ -82,23 +91,31 @@ class StatsDashboard extends BaseWidget
         $unit = Unit::find($unitId);
         $unitName = $unit?->name ?? 'Unit';
 
-        $totalAssets = Asset::where('unit_id', $unitId)->notTransferred()->count();
-        $totalValue = Asset::where('unit_id', $unitId)->notTransferred()->sum('price');
-        $goodAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'bagus')->count();
-        $damagedAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'rusak')->count();
-        $activeAssets = Asset::where('unit_id', $unitId)->notTransferred()->where('status', 'active')->count();
-        $totalLocations = Location::where('unit_id', $unitId)->count();
+        $cachedData = Cache::remember("dashboard_unit_stats_{$unitId}", 300, function () use ($unitId) {
+            $totalAssets = Asset::where('unit_id', $unitId)->notTransferred()->count();
+            return [
+                'totalAssets' => $totalAssets,
+                'totalValue' => Asset::where('unit_id', $unitId)->notTransferred()->sum('price'),
+                'goodAssets' => Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'bagus')->count(),
+                'damagedAssets' => Asset::where('unit_id', $unitId)->notTransferred()->where('condition', 'rusak')->count(),
+                'activeAssets' => Asset::where('unit_id', $unitId)->notTransferred()->where('status', 'active')->count(),
+                'totalLocations' => Location::where('unit_id', $unitId)->count(),
+            ];
+        });
 
-        // Persentase
+        $totalAssets = $cachedData['totalAssets'];
+        $goodAssets = $cachedData['goodAssets'];
+        $damagedAssets = $cachedData['damagedAssets'];
+        $activeAssets = $cachedData['activeAssets'];
         $goodPercent = $totalAssets > 0 ? round($goodAssets / $totalAssets * 100) : 0;
 
         return [
             Stat::make('Total Aset ' . $unitName, number_format($totalAssets))
-                ->description("{$totalLocations} Lokasi")
+                ->description("{$cachedData['totalLocations']} Lokasi")
                 ->descriptionIcon('heroicon-o-cube')
                 ->color('primary'),
 
-            Stat::make('Nilai Aset', 'Rp ' . number_format($totalValue, 0, ',', '.'))
+            Stat::make('Nilai Aset', 'Rp ' . number_format($cachedData['totalValue'], 0, ',', '.'))
                 ->description('Total nilai aset unit')
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success'),
