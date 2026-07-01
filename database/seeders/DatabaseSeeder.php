@@ -113,28 +113,6 @@ class DatabaseSeeder extends Seeder
         // Ensure directories exist
         Storage::disk('public')->makeDirectory('assets');
 
-        // 8. Seed Assets
-        for ($i = 0; $i < 50; $i++) {
-            Asset::create([
-                'name' => 'Asset Mock ' . ($i + 1),
-                'condition' => $i % 5 === 0 ? 'rusak' : 'bagus',
-                'portability' => $i % 2 === 0 ? 'portable' : 'non-portable',
-                'entries_number' => rand(100, 999),
-                'description' => 'Deskripsi untuk Asset Mock ' . ($i + 1),
-                'brand' => ['ASUS', 'Epson', 'Panasonic', 'Indofurniture'][rand(0, 3)],
-                'price' => rand(1000000, 25000000),
-                'aquisition' => 'Pembelian APBD ' . rand(2023, 2026),
-                'aquisition_date' => now()->subDays(rand(10, 500))->toDateString(),
-                'status' => 'active',
-                'image' => 'assets/placeholder.jpg',
-                'user_id' => $allUsers->random()->id,
-                'unit_id' => $allUnits->random()->id,
-                'tool_id' => $allTools->random()->id,
-                'location_id' => $allLocations->random()->id,
-                'category_id' => $allCategories->random()->id,
-                'year_id' => $allYears->random()->id,
-                'aktiva_id' => $allAktivas->random()->id,
-            ]);
-        }
+        // No assets are seeded for clean production/real testing environment.
     }
 }
