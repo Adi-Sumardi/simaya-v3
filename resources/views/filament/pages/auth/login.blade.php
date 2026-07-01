@@ -170,43 +170,32 @@
     </div>
 
     <style>
-        /* Hide default Filament simple page wrapper */
-        .fi-simple-page {
+        /* Hide default Filament simple page wrapper and reset constraints */
+        .fi-simple-layout {
+            padding: 0 !important;
+            gap: 0 !important;
             background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%) !important;
-            min-height: 100vh;
-        }
-
-        .fi-simple-page > div {
+            min-height: 100vh !important;
+            width: 100% !important;
             max-width: 100% !important;
-            padding: 0 !important;
         }
 
-        .fi-simple-main {
-            background: transparent !important;
+        .fi-simple-layout > div,
+        .fi-simple-layout main,
+        .fi-simple-main-ctn,
+        .fi-simple-main,
+        .fi-simple-page {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
             box-shadow: none !important;
-            padding: 0 !important;
-            max-width: 100% !important;
-        }
-
-        .fi-simple-main-ctn {
-            padding: 0 !important;
+            background: transparent !important;
         }
 
         /* Hide default Filament header (Simaya + Sign in text) */
         .fi-simple-header {
             display: none !important;
-        }
-
-        /* Remove white gap at top */
-        .fi-simple-layout {
-            padding: 0 !important;
-            gap: 0 !important;
-            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%) !important;
-        }
-
-        .fi-simple-main-ctn {
-            margin: 0 !important;
-            min-height: 100vh !important;
         }
 
         /* Body background */

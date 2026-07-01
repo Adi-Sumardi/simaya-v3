@@ -35,6 +35,17 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith("http")) return;
+
+  // Bypass Service Worker completely for Laravel, Filament, Livewire, and API paths
+  if (
+    url.pathname.startsWith("/admin") ||
+    url.pathname.startsWith("/livewire") ||
+    url.pathname.startsWith("/api") ||
+    url.pathname.startsWith("/storage")
+  ) {
+    return;
+  }
+
   if (
     url.pathname.startsWith("/_next/") || 
     url.pathname.includes("webpack") || 
