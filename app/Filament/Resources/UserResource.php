@@ -50,7 +50,6 @@ class UserResource extends Resource
                     ->searchable(),
                 Forms\Components\Select::make('unit_id')
                     ->relationship('unit', 'name')
-                    ->preload()
                     ->searchable(),
             ]);
     }

@@ -28,33 +28,35 @@ echo "-> Memperbarui aset Filament..."
 php artisan filament:assets
 
 # 6. Generate perizinan baru dari Filament Shield (jika ada resource baru)
-echo "-> Sinkronisasi perizinan Filament Shield..."
-php artisan shield:generate --all --panel=admin --no-interaction
+# NOTE: Dikomentari agar tidak menimpa kustomisasi role/permission di production secara otomatis.
+# echo "-> Sinkronisasi perizinan Filament Shield..."
+# php artisan shield:generate --all --panel=admin --no-interaction
 
 # 7. Verifikasi & sinkronisasi Roles & Permissions agar menu tetap muncul
-echo "-> Memverifikasi konfigurasi hak akses user..."
-php artisan tinker --execute="
-\$unitRole = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Unit', 'guard_name' => 'web']);
-\$allPermissions = Spatie\Permission\Models\Permission::pluck('name')->toArray();
-
-// Berikan izin Unit untuk semua modul kecuali modul pengaturan Role (shield)
-\$unitPermissions = array_filter(\$allPermissions, function(\$p) {
-    return !str_contains(\$p, 'role');
-});
-\$unitRole->syncPermissions(\$unitPermissions);
-
-\$adminRole = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
-
-\$admin = App\Models\User::where('email', 'admin@simaya.id')->first();
-if (\$admin && !\$admin->hasRole('super_admin')) {
-    \$admin->assignRole(\$adminRole);
-}
-
-\$operator = App\Models\User::where('email', 'operator@simaya.id')->first();
-if (\$operator && !\$operator->hasRole('Unit')) {
-    \$operator->assignRole(\$unitRole);
-}
-"
+# NOTE: Dikomentari agar tidak merestart/mengubah role & permission yang sudah dikonfigurasi di database.
+# echo "-> Memverifikasi konfigurasi hak akses user..."
+# php artisan tinker --execute="
+# \$unitRole = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Unit', 'guard_name' => 'web']);
+# \$allPermissions = Spatie\Permission\Models\Permission::pluck('name')->toArray();
+# 
+# // Berikan izin Unit untuk semua modul kecuali modul pengaturan Role (shield)
+# \$unitPermissions = array_filter(\$allPermissions, function(\$p) {
+#     return !str_contains(\$p, 'role');
+# });
+# \$unitRole->syncPermissions(\$unitPermissions);
+# 
+# \$adminRole = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+# 
+# \$admin = App\Models\User::where('email', 'admin@simaya.id')->first();
+# if (\$admin && !\$admin->hasRole('super_admin')) {
+#     \$admin->assignRole(\$adminRole);
+# }
+# 
+# \$operator = App\Models\User::where('email', 'operator@simaya.id')->first();
+# if (\$operator && !\$operator->hasRole('Unit')) {
+#     \$operator->assignRole(\$unitRole);
+# }
+# "
 
 # 8. Bersihkan dan bangun ulang cache Laravel untuk performa maksimal
 echo "-> Mengoptimalkan cache konfigurasi dan rute..."

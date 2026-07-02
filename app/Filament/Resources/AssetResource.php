@@ -118,14 +118,12 @@ class AssetResource extends Resource
                         Forms\Components\Select::make('unit_id')
                             ->relationship('unit', 'name')
                             ->searchable()
-                            ->preload()
                             ->required()
                             ->reactive(),
                         Forms\Components\Select::make('location_id')
                             ->required()
                             ->label('Lokasi')
                             ->searchable()
-                            ->preload()
                             ->options(function (callable $get) {
                                 $unitId = $get('unit_id');
                                 if (!$unitId) {
@@ -137,13 +135,11 @@ class AssetResource extends Resource
                             ->relationship('tool', 'name')
                             ->label('Alat/Barang')
                             ->searchable()
-                            ->preload()
                             ->required(),
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
                             ->label('Kategori')
                             ->searchable()
-                            ->preload()
                             ->required(),
                         Forms\Components\Select::make('year_id')
                             ->relationship('year', 'year')
@@ -298,23 +294,19 @@ class AssetResource extends Resource
                 Tables\Filters\SelectFilter::make('unit_id')
                     ->relationship('unit', 'name')
                     ->label('Unit')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('location_id')
                     ->relationship('location', 'name')
                     ->label('Lokasi')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('category_id')
                     ->relationship('category', 'name')
                     ->label('Kategori')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('tool_id')
                     ->relationship('tool', 'name')
                     ->label('Alat')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('year_id')
                     ->relationship('year', 'year')
                     ->label('Tahun')

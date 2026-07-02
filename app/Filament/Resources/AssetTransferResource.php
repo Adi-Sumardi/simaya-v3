@@ -75,7 +75,6 @@ class AssetTransferResource extends Resource
                             })
                             ->required()
                             ->searchable()
-                            ->preload()
                             ->live()
                             ->disabled(function () {
                                 $user = Auth::user();
@@ -105,7 +104,6 @@ class AssetTransferResource extends Resource
                             ->relationship('toLocation', 'name')
                             ->required()
                             ->searchable()
-                            ->preload()
                             ->helperText('Pilih lokasi gudang yayasan sebagai tujuan'),
 
                         Forms\Components\Textarea::make('reason')
@@ -315,7 +313,8 @@ class AssetTransferResource extends Resource
                     ]),
                 Tables\Filters\SelectFilter::make('from_unit_id')
                     ->relationship('fromUnit', 'name')
-                    ->label('Unit'),
+                    ->label('Unit')
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
