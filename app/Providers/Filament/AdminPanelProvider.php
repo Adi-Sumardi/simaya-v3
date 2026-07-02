@@ -71,32 +71,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->profile(EditProfile::class)
             ->renderHook(
-                \Filament\View\PanelsRenderHook::HEAD_END,
-                fn (): string => \Illuminate\Support\Facades\Blade::render('
-                    <script>
-                        (function() {
-                            const appVersion = "v3.3.14_b2";
-                            if (localStorage.getItem("simaya_app_version") !== appVersion) {
-                                localStorage.setItem("simaya_app_version", appVersion);
-                                try {
-                                    const links = document.querySelectorAll(\'link[rel="stylesheet"]\');
-                                    links.forEach(link => {
-                                        const url = new URL(link.href);
-                                        if (url.origin === window.location.origin) {
-                                            url.searchParams.set(\'cb\', Date.now());
-                                            link.href = url.toString();
-                                        }
-                                    });
-                                } catch (e) {}
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 150);
-                            }
-                        })();
-                    </script>
-                ')
-            )
-            ->renderHook(
                 \Filament\View\PanelsRenderHook::BODY_START,
                 fn (): string => \Illuminate\Support\Facades\Blade::render('
                     <!-- Simaya Loading Overlay to prevent FOUC (Flash of Unstyled Content) -->
