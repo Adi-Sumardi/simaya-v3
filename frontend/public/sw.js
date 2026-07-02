@@ -1,4 +1,4 @@
-const CACHE_NAME = "simaya-cache-v1";
+const CACHE_NAME = "simaya-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/icon-192x192.png",
@@ -36,12 +36,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (!url.protocol.startsWith("http")) return;
 
-  // Bypass Service Worker completely for Laravel, Filament, Livewire, and API paths
+  // Bypass Service Worker completely for Laravel, Filament, Livewire, API, and static assets (CSS, JS)
   if (
     url.pathname.startsWith("/admin") ||
     url.pathname.startsWith("/livewire") ||
     url.pathname.startsWith("/api") ||
-    url.pathname.startsWith("/storage")
+    url.pathname.startsWith("/storage") ||
+    url.pathname.startsWith("/js/") ||
+    url.pathname.startsWith("/css/") ||
+    url.pathname.includes("filament")
   ) {
     return;
   }
