@@ -17,10 +17,10 @@ class PreventRequestsCaching
     {
         $response = $next($request);
 
-        // Instruct browsers and intermediate proxies to never cache the HTML response
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
+        // Allow back-forward cache (bfcache) but require revalidation for active navigation
+        $response->headers->set('Cache-Control', 'no-cache, must-revalidate');
+        $response->headers->remove('Pragma');
+        $response->headers->remove('Expires');
 
         // Dynamically bust cache for Filament static assets on the server side
         if (method_exists($response, 'getContent')) {

@@ -41,11 +41,16 @@ class Asset extends Model
     protected static function booted(): void
     {
         $clearCache = function ($asset) {
-            // Clear stats cache
+            // Clear stats caches
             Cache::forget('asset_stats_');
             Cache::forget("asset_stats_{$asset->unit_id}");
+            Cache::forget("asset_stats_{$asset->unit_id}_loc_{$asset->location_id}");
             Cache::forget('asset_count_all');
             Cache::forget("asset_count_unit_{$asset->unit_id}");
+            
+            // Clear tab badge count caches
+            Cache::forget("asset_location_counts_{$asset->unit_id}");
+            Cache::forget('asset_unit_counts');
         };
 
         static::saved($clearCache);

@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\Unit;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AssetStats extends BaseWidget
@@ -34,21 +35,30 @@ class AssetStats extends BaseWidget
 
     protected function getStats(): array
     {
-        // Query konsisten dengan table (include soft deleted, exclude transferred)
-        $stats = Asset::withoutGlobalScopes([SoftDeletingScope::class])
-            ->notTransferred()
-            ->when($this->unitId, fn($query) => $query->where('unit_id', $this->unitId))
-            ->when($this->locationId, fn($query) => $query->where('location_id', $this->locationId))
-            ->selectRaw('
-                COUNT(*) as total_count,
-                SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active_count,
-                SUM(CASE WHEN status = "inactive" THEN 1 ELSE 0 END) as inactive_count,
-                SUM(CASE WHEN status = "repaired" THEN 1 ELSE 0 END) as repaired_count,
-                SUM(CASE WHEN `condition` = "bagus" THEN 1 ELSE 0 END) as good_count,
-                SUM(CASE WHEN `condition` = "rusak" THEN 1 ELSE 0 END) as damaged_count,
-                COALESCE(SUM(price), 0) as total_price
-            ')
-            ->first();
+        $cacheKey = 'asset_stats_';
+        if ($this->locationId) {
+            $cacheKey = "asset_stats_{$this->unitId}_loc_{$this->locationId}";
+        } elseif ($this->unitId) {
+            $cacheKey = "asset_stats_{$this->unitId}";
+        }
+
+        // Cache stats query for 60 seconds (cleared when assets are updated)
+        $stats = Cache::remember($cacheKey, 60, function () {
+            return Asset::withoutGlobalScopes([SoftDeletingScope::class])
+                ->notTransferred()
+                ->when($this->unitId, fn($query) => $query->where('unit_id', $this->unitId))
+                ->when($this->locationId, fn($query) => $query->where('location_id', $this->locationId))
+                ->selectRaw('
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active_count,
+                    SUM(CASE WHEN status = "inactive" THEN 1 ELSE 0 END) as inactive_count,
+                    SUM(CASE WHEN status = "repaired" THEN 1 ELSE 0 END) as repaired_count,
+                    SUM(CASE WHEN `condition` = "bagus" THEN 1 ELSE 0 END) as good_count,
+                    SUM(CASE WHEN `condition` = "rusak" THEN 1 ELSE 0 END) as damaged_count,
+                    COALESCE(SUM(price), 0) as total_price
+                ')
+                ->first();
+        });
 
         $formattedAssetSum = 'Rp ' . number_format($stats->total_price ?? 0, 0, ',', '.');
 
