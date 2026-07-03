@@ -87,7 +87,11 @@ class AssetDepreciationReport extends Page implements HasTable
 
                 Tables\Columns\TextColumn::make('depreciation_percent')
                     ->label('Progres Susut')
-                    ->formatStateUsing(fn (?float $state): string => $state === null ? 'Tidak dapat dihitung' : number_format($state, 1) . '%')
+                    ->formatStateUsing(fn (?float $state, Asset $record): string => match ($record->depreciation_status) {
+                        'not_depreciating' => 'Tidak Menyusut',
+                        'no_data' => 'Tidak dapat dihitung',
+                        default => number_format($state, 1) . '%',
+                    })
                     ->color(fn (Asset $record): string => match ($record->depreciation_status) {
                         'fully_depreciated' => 'danger',
                         'depreciating' => 'warning',
@@ -107,13 +111,14 @@ class AssetDepreciationReport extends Page implements HasTable
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'fully_depreciated' => 'Habis Susut',
+                        'not_depreciating' => 'Tidak Menyusut',
                         'depreciating' => 'Menyusut',
                         default => 'Data Kurang',
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'fully_depreciated' => 'danger',
-                        'depreciating' => 'warning',
-                        default => 'gray',
+                        'not_depreciating', 'no_data' => 'gray',
+                        default => 'warning',
                     }),
             ])
             ->filters([
@@ -133,17 +138,24 @@ class AssetDepreciationReport extends Page implements HasTable
                             ->options([
                                 'depreciating' => 'Masih Menyusut',
                                 'fully_depreciated' => 'Sudah Habis',
+                                'not_depreciating' => 'Tidak Menyusut (0%)',
                                 'no_data' => 'Data Kurang',
                             ]),
                     ])
                     ->query(function (Builder $query, array $data) {
+                        // Umur manfaat (bulan) diturunkan dari persentase efektif tiap aset
+                        // (punya sendiri kalau diisi, kalau tidak pakai default global 10%/tahun).
+                        $effectiveRate = 'COALESCE(NULLIF(depreciation_rate, 0), ' . Asset::DEFAULT_DEPRECIATION_RATE . ')';
+                        $usefulLifeMonths = "((100 / {$effectiveRate}) * 12)";
+                        $monthsElapsed = 'TIMESTAMPDIFF(MONTH, aquisition_date, NOW())';
+                        $hasData = "price IS NOT NULL AND price > 0 AND aquisition_date IS NOT NULL";
+
+                        $rateNotZero = '(depreciation_rate IS NULL OR depreciation_rate <> 0)';
+
                         return match ($data['value'] ?? null) {
-                            'fully_depreciated' => $query->whereNotNull('price')->whereNotNull('aquisition_date')
-                                ->where('price', '>', 0)
-                                ->whereDate('aquisition_date', '<=', now()->subYears(10)),
-                            'depreciating' => $query->whereNotNull('price')->whereNotNull('aquisition_date')
-                                ->where('price', '>', 0)
-                                ->whereDate('aquisition_date', '>', now()->subYears(10)),
+                            'fully_depreciated' => $query->whereRaw("{$hasData} AND {$rateNotZero} AND {$monthsElapsed} >= {$usefulLifeMonths}"),
+                            'depreciating' => $query->whereRaw("{$hasData} AND {$rateNotZero} AND {$monthsElapsed} < {$usefulLifeMonths}"),
+                            'not_depreciating' => $query->whereRaw("{$hasData}")->where('depreciation_rate', 0),
                             'no_data' => $query->where(function (Builder $q) {
                                 $q->whereNull('price')->orWhere('price', '<=', 0)->orWhereNull('aquisition_date');
                             }),

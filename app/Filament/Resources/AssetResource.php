@@ -109,7 +109,15 @@ class AssetResource extends Resource
                             ->label('Tanggal Perolehan')
                             ->date()
                             ->placeholder('YYYY-MM-DD'),
-                    ])->columns(3),
+                        Forms\Components\TextInput::make('depreciation_rate')
+                            ->label('Persentase Penyusutan/Tahun')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->placeholder('10 (default global)')
+                            ->helperText('Kosongkan untuk pakai default 10%/tahun. Isi 0 kalau aset ini tidak menyusut (mis. tanah).'),
+                    ])->columns(4),
 
                 Forms\Components\Section::make('Lokasi & Kategori')
                     ->schema([
@@ -550,7 +558,8 @@ class AssetResource extends Resource
                     ]),
 
                 \Filament\Infolists\Components\Section::make('Penyusutan Aset')
-                    ->description('Garis lurus 10% per tahun dari harga beli, umur manfaat 10 tahun.')
+                    ->description(fn ($record) => 'Garis lurus ' . rtrim(rtrim(number_format($record->effective_depreciation_rate, 1), '0'), '.') . '% per tahun dari harga beli'
+                        . ($record->depreciation_rate === null ? ' (default global).' : ' (persentase khusus aset ini).'))
                     ->schema([
                         TextEntry::make('depreciation_missing')
                             ->label('')
@@ -579,11 +588,13 @@ class AssetResource extends Resource
                                     ->badge()
                                     ->formatStateUsing(fn (string $state, $record): string => match ($state) {
                                         'fully_depreciated' => 'Habis Susut',
+                                        'not_depreciating' => 'Tidak Menyusut (0%)',
                                         'depreciating' => number_format($record->depreciation_percent, 1) . '% Menyusut',
                                         default => 'Data Kurang',
                                     })
                                     ->color(fn (string $state): string => match ($state) {
                                         'fully_depreciated' => 'danger',
+                                        'not_depreciating' => 'gray',
                                         'depreciating' => 'warning',
                                         default => 'gray',
                                     }),

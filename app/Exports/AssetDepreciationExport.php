@@ -29,6 +29,7 @@ class AssetDepreciationExport implements FromCollection, WithHeadings
                     'category' => $asset->category?->name,
                     'aquisition_date' => $asset->aquisition_date?->format('d-m-Y'),
                     'price' => $asset->price,
+                    'depreciation_rate_used' => $asset->effective_depreciation_rate,
                     'accumulated_depreciation' => $asset->accumulated_depreciation,
                     'book_value' => $asset->book_value,
                     'depreciation_percent' => $asset->depreciation_percent !== null
@@ -36,6 +37,7 @@ class AssetDepreciationExport implements FromCollection, WithHeadings
                         : null,
                     'status' => match ($asset->depreciation_status) {
                         'fully_depreciated' => 'Habis Susut',
+                        'not_depreciating' => 'Tidak Menyusut',
                         'depreciating' => 'Menyusut',
                         default => 'Data Kurang',
                     },
@@ -53,9 +55,10 @@ class AssetDepreciationExport implements FromCollection, WithHeadings
             'Kategori',
             'Tanggal Perolehan',
             'Harga Beli',
+            'Persentase Susut/Tahun (%)',
             'Akumulasi Penyusutan',
             'Nilai Buku',
-            'Persentase Susut (%)',
+            'Progres Susut (%)',
             'Status',
         ];
     }

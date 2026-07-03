@@ -22,6 +22,7 @@ class Asset extends Model
         'description',
         'brand',
         'price',
+        'depreciation_rate',
         'aquisition',
         'aquisition_date',
         'status',
@@ -37,6 +38,7 @@ class Asset extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'depreciation_rate' => 'decimal:2',
         'aquisition_date' => 'date',
     ];
 
@@ -161,6 +163,12 @@ class Asset extends Model
     }
 
     /**
+     * Persentase penyusutan per tahun default, dipakai kalau aset tidak
+     * punya persentase kustom sendiri (kolom `depreciation_rate`).
+     */
+    public const DEFAULT_DEPRECIATION_RATE = 10.0;
+
+    /**
      * Tanggal dasar perhitungan penyusutan.
      * Aset tanpa harga atau tanggal perolehan tidak bisa disusutkan.
      */
@@ -170,7 +178,31 @@ class Asset extends Model
     }
 
     /**
-     * Penyusutan garis lurus 10%/tahun, umur manfaat 10 tahun, dihitung prorata per bulan.
+     * Persentase yang benar-benar dipakai: punya aset sendiri kalau diisi,
+     * kalau tidak jatuh ke default global.
+     */
+    public function getEffectiveDepreciationRateAttribute(): float
+    {
+        return $this->depreciation_rate !== null
+            ? (float) $this->depreciation_rate
+            : self::DEFAULT_DEPRECIATION_RATE;
+    }
+
+    /**
+     * Umur manfaat (bulan) sampai nilai buku mencapai 0, diturunkan dari persentase.
+     * Null berarti persentase 0% -> aset tidak pernah menyusut (mis. tanah).
+     */
+    public function getUsefulLifeMonthsAttribute(): ?int
+    {
+        if ($this->effective_depreciation_rate <= 0) {
+            return null;
+        }
+
+        return (int) round((100 / $this->effective_depreciation_rate) * 12);
+    }
+
+    /**
+     * Penyusutan garis lurus, dihitung prorata per bulan.
      */
     public function getDepreciationMonthsAttribute(): ?float
     {
@@ -187,7 +219,11 @@ class Asset extends Model
             return null;
         }
 
-        $monthlyRate = ($this->price * 0.10) / 12;
+        if ($this->effective_depreciation_rate <= 0) {
+            return 0.0;
+        }
+
+        $monthlyRate = ($this->price * ($this->effective_depreciation_rate / 100)) / 12;
 
         return min((float) $this->price, $monthlyRate * $this->depreciation_months);
     }
@@ -203,7 +239,7 @@ class Asset extends Model
 
     public function getDepreciationPercentAttribute(): ?float
     {
-        if (! $this->canBeDepreciated()) {
+        if (! $this->canBeDepreciated() || $this->price <= 0) {
             return null;
         }
 
@@ -212,7 +248,8 @@ class Asset extends Model
 
     /**
      * 'no_data' = harga/tanggal perolehan belum lengkap
-     * 'fully_depreciated' = sudah >= 10 tahun, nilai buku Rp 0
+     * 'not_depreciating' = persentase diset 0% (aset tidak menyusut, mis. tanah)
+     * 'fully_depreciated' = sudah melewati umur manfaat, nilai buku Rp 0
      * 'depreciating' = masih dalam masa penyusutan
      */
     public function getDepreciationStatusAttribute(): string
@@ -221,6 +258,10 @@ class Asset extends Model
             return 'no_data';
         }
 
-        return $this->depreciation_months >= 120 ? 'fully_depreciated' : 'depreciating';
+        if ($this->useful_life_months === null) {
+            return 'not_depreciating';
+        }
+
+        return $this->depreciation_months >= $this->useful_life_months ? 'fully_depreciated' : 'depreciating';
     }
 }
