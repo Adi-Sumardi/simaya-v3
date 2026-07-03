@@ -438,6 +438,8 @@ class AssetResource extends Resource
                     ->schema([
                         ImageEntry::make('image')
                             ->label('Foto Aset')
+                            ->alignCenter()
+                            ->columnSpanFull()
                             ->size(200)
                             ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=random&size=200'),
 
