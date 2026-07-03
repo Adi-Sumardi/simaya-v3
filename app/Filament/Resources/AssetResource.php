@@ -541,11 +541,54 @@ class AssetResource extends Resource
                                     ->label('Pemilik/Sumber'),
                                 TextEntry::make('aquisition_date')
                                     ->label('Tanggal Perolehan')
-                                    ->date('d F Y'),
+                                    ->date('d F Y')
+                                    ->placeholder('Belum diisi'),
                                 TextEntry::make('updated_at')
                                     ->label('Terakhir Diupdate')
                                     ->since(),
                             ]),
+                    ]),
+
+                \Filament\Infolists\Components\Section::make('Penyusutan Aset')
+                    ->description('Garis lurus 10% per tahun dari harga beli, umur manfaat 10 tahun.')
+                    ->schema([
+                        TextEntry::make('depreciation_missing')
+                            ->label('')
+                            ->state('Nilai buku tidak dapat dihitung karena Harga atau Tanggal Perolehan belum diisi.')
+                            ->color('gray')
+                            ->icon('heroicon-o-exclamation-triangle')
+                            ->visible(fn ($record) => $record->depreciation_status === 'no_data'),
+
+                        \Filament\Infolists\Components\Grid::make(4)
+                            ->schema([
+                                TextEntry::make('price')
+                                    ->label('Harga Beli')
+                                    ->money('IDR', locale: 'id'),
+                                TextEntry::make('accumulated_depreciation')
+                                    ->label('Akumulasi Penyusutan')
+                                    ->money('IDR', locale: 'id')
+                                    ->color('warning'),
+                                TextEntry::make('book_value')
+                                    ->label('Nilai Buku Saat Ini')
+                                    ->money('IDR', locale: 'id')
+                                    ->weight('bold')
+                                    ->size('lg')
+                                    ->color('primary'),
+                                TextEntry::make('depreciation_status')
+                                    ->label('Status')
+                                    ->badge()
+                                    ->formatStateUsing(fn (string $state, $record): string => match ($state) {
+                                        'fully_depreciated' => 'Habis Susut',
+                                        'depreciating' => number_format($record->depreciation_percent, 1) . '% Menyusut',
+                                        default => 'Data Kurang',
+                                    })
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'fully_depreciated' => 'danger',
+                                        'depreciating' => 'warning',
+                                        default => 'gray',
+                                    }),
+                            ])
+                            ->visible(fn ($record) => $record->depreciation_status !== 'no_data'),
                     ]),
             ]);
     }

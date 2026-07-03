@@ -35,6 +35,11 @@ class Asset extends Model
         'aktiva_id',
     ];
 
+    protected $casts = [
+        'price' => 'decimal:2',
+        'aquisition_date' => 'date',
+    ];
+
     /**
      * Clear cache saat asset di CRUD
      */
@@ -153,5 +158,69 @@ class Asset extends Model
     public function isDisposed(): bool
     {
         return $this->status === 'disposed';
+    }
+
+    /**
+     * Tanggal dasar perhitungan penyusutan.
+     * Aset tanpa harga atau tanggal perolehan tidak bisa disusutkan.
+     */
+    public function canBeDepreciated(): bool
+    {
+        return $this->price !== null && $this->price > 0 && $this->aquisition_date !== null;
+    }
+
+    /**
+     * Penyusutan garis lurus 10%/tahun, umur manfaat 10 tahun, dihitung prorata per bulan.
+     */
+    public function getDepreciationMonthsAttribute(): ?float
+    {
+        if (! $this->canBeDepreciated()) {
+            return null;
+        }
+
+        return max(0, $this->aquisition_date->diffInMonths(now(), true));
+    }
+
+    public function getAccumulatedDepreciationAttribute(): ?float
+    {
+        if (! $this->canBeDepreciated()) {
+            return null;
+        }
+
+        $monthlyRate = ($this->price * 0.10) / 12;
+
+        return min((float) $this->price, $monthlyRate * $this->depreciation_months);
+    }
+
+    public function getBookValueAttribute(): ?float
+    {
+        if (! $this->canBeDepreciated()) {
+            return null;
+        }
+
+        return max(0, (float) $this->price - $this->accumulated_depreciation);
+    }
+
+    public function getDepreciationPercentAttribute(): ?float
+    {
+        if (! $this->canBeDepreciated()) {
+            return null;
+        }
+
+        return min(100, ($this->accumulated_depreciation / $this->price) * 100);
+    }
+
+    /**
+     * 'no_data' = harga/tanggal perolehan belum lengkap
+     * 'fully_depreciated' = sudah >= 10 tahun, nilai buku Rp 0
+     * 'depreciating' = masih dalam masa penyusutan
+     */
+    public function getDepreciationStatusAttribute(): string
+    {
+        if (! $this->canBeDepreciated()) {
+            return 'no_data';
+        }
+
+        return $this->depreciation_months >= 120 ? 'fully_depreciated' : 'depreciating';
     }
 }
