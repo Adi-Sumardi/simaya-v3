@@ -94,6 +94,36 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
+                    <h5 class="card-title text-center mb-4">Rekap Aset di Lokasi {{ $lokasi->name }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">No</th>
+                                    <th>Nama Aset</th>
+                                    <th style="width: 120px;">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($lokasi->assets->groupBy('name') as $namaAset => $items)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td>{{ $namaAset }}</td>
+                                        <td>{{ $items->count() }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
                     <h5 class="card-title text-center mb-4">Data Aset di Lokasi {{ $lokasi->name }}</h5>
                     <div class="table-responsive">
                         <table class="table table-bordered">
