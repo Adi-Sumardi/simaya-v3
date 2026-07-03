@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AssetConditionChart;
-use App\Filament\Widgets\AssetMovementRecapWidget;
 use App\Filament\Widgets\AssetStatusChart;
 use App\Filament\Widgets\AssetsChart;
 use App\Filament\Widgets\DamagedAssetsWidget;
@@ -21,9 +20,6 @@ class Dashboard extends BaseDashboard
         $widgets = [
             StatsDashboard::class,
         ];
-
-        // Recap table for all roles - above distribution chart
-        $widgets[] = AssetMovementRecapWidget::class;
 
         // Charts for all roles
         $widgets[] = AssetsChart::class;
