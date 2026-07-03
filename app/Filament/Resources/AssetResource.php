@@ -332,7 +332,8 @@ class AssetResource extends Resource
                         'rusak' => 'Rusak',
                     ])
                     ->label('Kondisi'),
-            ])
+            ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\ViewAction::make(),
