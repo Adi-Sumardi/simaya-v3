@@ -53,23 +53,15 @@
 
                     <div id="print-area" class="mt-3">
                         <div class="card">
-                            <div class="card-body text-center">
-                                <div class="bx-border mx-auto" style="width: 220px; height: 220px; border: 1px solid black; position: relative;">
-                                    <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
-                                    <div id="qrcode-{{ $id }}" style="width: 200px; height: 200px;"></div>
-                                    <img src="{{ asset('images/yapi.png') }}" alt="Logo Tengah"
-                                        style="
-                                            position: absolute;
-                                            top: 50%;
-                                            left: 50%;
-                                            width: 55px;
-                                            height: 55px;
-                                            transform: translate(-50%, -50%);
-                                            z-index: 5;
-                                            background: white;
-                                            padding: 3px;
-                                            border-radius: 8px;
-                                        ">
+                            <div class="card-body">
+                                <div class="mx-auto" style="width: 280px; border: 2px solid black; padding: 12px;">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                                        <div id="qrcode-{{ $id }}" style="width: 130px; height: 130px;"></div>
+                                        <img src="{{ asset('images/yapi.png') }}" alt="Logo YAPI"
+                                            style="width: 110px; height: 110px; border-radius: 50%;">
+                                    </div>
+                                    <div class="text-center mt-2" style="font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em;">
+                                        {{ $asset->entries_number }}
                                     </div>
                                 </div>
                             </div>
@@ -113,8 +105,8 @@
     document.addEventListener("DOMContentLoaded", function () {
       new QRCode(document.getElementById("qrcode-{{ $id }}"), {
         text: "https://simaya.yapi.web.id/guest-detail-asset/{{ $id }}",
-        width: 200,
-        height: 200,
+        width: 130,
+        height: 130,
         colorDark: "#048025",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
