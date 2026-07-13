@@ -51,17 +51,17 @@
                         </div>
                     </div>
 
-                    <div id="print-area" class="mt-3">
+                    <div id="print-area" class="mt-3 text-center">
                         <div class="card">
                             <div class="card-body">
-                                <div class="mx-auto" style="width: 280px; border: 2px solid black; padding: 12px;">
+                                <div style="display: inline-block; border: 2px solid black; padding: 12px;">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
                                         <div id="qrcode-{{ $id }}" style="width: 130px; height: 130px;"></div>
                                         <img src="{{ asset('images/yapi.png') }}" alt="Logo YAPI"
                                             style="width: 110px; height: 110px; border-radius: 50%;">
                                     </div>
-                                    <div class="text-center mt-2" style="font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em;">
-                                        {{ $asset->entries_number }}
+                                    <div class="mt-2" style="font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap;">
+                                        {{ $asset->unit->number ?? '--' }}/{{ $asset->aktiva->code ?? '--' }}/{{ $asset->location->number ?? '--' }}/{{ $asset->tool->code_name ?? '--' }}/{{ $asset->category->code ?? '--' }}/{{ $asset->year->code ?? '--' }}/{{ $asset->entries_number ?? '--' }}
                                     </div>
                                 </div>
                             </div>
