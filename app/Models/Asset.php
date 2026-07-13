@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 
 class Asset extends Model
 {
@@ -112,6 +114,36 @@ class Asset extends Model
     public function dispositionItems()
     {
         return $this->hasMany(AssetDispositionItem::class);
+    }
+
+    /**
+     * Kode lengkap aset: unit/aktiva/lokasi/barang/kategori/tahun/nomor urut.
+     */
+    public function getFullCodeAttribute(): string
+    {
+        return collect([
+            $this->unit?->number,
+            $this->aktiva?->code,
+            $this->location?->number,
+            $this->tool?->code_name,
+            $this->category?->code,
+            $this->year?->code,
+            $this->entries_number,
+        ])->map(fn ($part) => $part ?? '--')->implode('/');
+    }
+
+    /**
+     * QR-code (base64 PNG) yang mengarah ke halaman detail publik aset ini.
+     */
+    public function getQrCodeImageAttribute(): string
+    {
+        $options = new QROptions([
+            'outputType' => QRCode::OUTPUT_IMAGE_PNG,
+            'scale' => 6,
+            'imageBase64' => true,
+        ]);
+
+        return (new QRCode($options))->render(route('asset.detail', ['id' => $this->id]));
     }
 
     /**

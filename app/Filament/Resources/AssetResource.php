@@ -470,6 +470,22 @@ class AssetResource extends Resource
                             ->columnSpanFull(),
                     ]),
 
+                \Filament\Infolists\Components\Section::make('QR-Code Aset')
+                    ->description('Pindai untuk membuka halaman detail publik aset ini.')
+                    ->schema([
+                        ImageEntry::make('qr_code_image')
+                            ->label('')
+                            ->alignCenter()
+                            ->size(160)
+                            ->columnSpanFull(),
+
+                        TextEntry::make('full_code')
+                            ->label('')
+                            ->alignCenter()
+                            ->columnSpanFull()
+                            ->weight('bold'),
+                    ]),
+
                 \Filament\Infolists\Components\Section::make('Status & Kondisi')
                     ->schema([
                         \Filament\Infolists\Components\Grid::make(4)
