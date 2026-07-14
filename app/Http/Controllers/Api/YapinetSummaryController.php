@@ -75,11 +75,11 @@ class YapinetSummaryController extends Controller
             return $rows;
         };
 
-        // Cap 20/unit — cukup untuk gambaran per unit tanpa payload tak terbatas;
-        // frontend menambahkan "Tampilkan lebih banyak" di atas data yang sudah
-        // diambil ini (bukan server-side pagination, karena Yapinet cuma baca
-        // snapshot cache berkala, tidak fetch live per klik).
-        $rusakAssets = $samplePerUnit(20, function ($q) {
+        // Cap 50/unit — cukup tinggi supaya tombol "Tampilkan lebih banyak" di
+        // frontend (per 10 baris) beneran kepakai walau sedang difilter ke
+        // satu unit, bukan cuma waktu "Semua Unit" — payload masih aman
+        // karena Yapinet cuma baca snapshot cache berkala, bukan fetch live.
+        $rusakAssets = $samplePerUnit(50, function ($q) {
             $q->where(function ($w) {
                 $w->where('condition', 'rusak')->orWhereIn('status', ['repaired', 'inactive']);
             });
@@ -99,7 +99,7 @@ class YapinetSummaryController extends Controller
         // depreciation_rate kustom, karena aset tanpa nilai kustom tetap
         // disusutkan pakai persentase default global (effective_depreciation_rate,
         // lihat Asset::DEFAULT_DEPRECIATION_RATE).
-        $penyusutanAssets = $samplePerUnit(5, function ($q) {
+        $penyusutanAssets = $samplePerUnit(50, function ($q) {
             $q->whereNotNull('aquisition_date')->where('price', '>', 0);
         });
 
