@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'yapinet' => [
+        'api_key' => env('YAPINET_API_KEY'),
+    ],
+
 ];

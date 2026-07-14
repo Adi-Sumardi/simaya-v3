@@ -6,9 +6,13 @@ use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AssetTransferController;
 use App\Http\Controllers\Api\AssetDispositionController;
 use App\Http\Controllers\Api\MasterController;
+use App\Http\Controllers\Api\YapinetSummaryController;
 
 // Public authentication endpoint
 Route::post('/login', [AuthController::class, 'login']);
+
+// Yapinet integration endpoint, protected by static API key (not Sanctum)
+Route::middleware('yapinet.auth')->get('integrations/yapinet/summary', [YapinetSummaryController::class, 'summary']);
 
 // Sanctum token protected API endpoints
 Route::middleware('auth:sanctum')->group(function () {
