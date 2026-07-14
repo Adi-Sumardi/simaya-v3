@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
+use App\Models\Location;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,13 @@ class YapinetSummaryController extends Controller
         // Breakdown per unit nyata (dipakai frontend Yapinet supaya kartu
         // "Jumlah Aset & Nilai Aset" ikut berubah saat "Filter Unit" dipilih,
         // bukan selalu menampilkan agregat semua unit).
+        // Jumlah lokasi/ruangan per unit (dari tabel `locations`, bukan dari
+        // aset — ruangan tetap dihitung walau lagi kosong tanpa aset).
+        $lokasiCountByUnit = Location::query()
+            ->selectRaw('unit_id, COUNT(*) as lokasi_count')
+            ->groupBy('unit_id')
+            ->pluck('lokasi_count', 'unit_id');
+
         $byUnit = Asset::query()
             ->selectRaw('unit_id, COUNT(*) as jumlah_aset, SUM(price) as nilai_total_aset')
             ->groupBy('unit_id')
@@ -45,16 +53,37 @@ class YapinetSummaryController extends Controller
                 'unit' => $row->unit?->name ?? '-',
                 'jumlah_aset' => (int) $row->jumlah_aset,
                 'nilai_total_aset' => (float) $row->nilai_total_aset,
+                'lokasi_count' => (int) ($lokasiCountByUnit[$row->unit_id] ?? 0),
             ])
             ->values();
 
-        $rusakAssets = (clone $query)
-            ->with('unit')
-            ->where(function ($q) {
-                $q->where('condition', 'rusak')
-                    ->orWhereIn('status', ['repaired', 'inactive']);
-            })
-            ->get();
+        // Sample diambil PER UNIT (bukan limit() global) supaya setiap unit
+        // tetap punya baris sendiri untuk difilter di frontend — dengan ribuan
+        // aset tersebar di banyak unit, limit() global hampir pasti tidak
+        // kebagian unit yang sedang dipilih user.
+        $unitIdsToSample = $unitId
+            ? [$unitId]
+            : (clone $query)->distinct()->pluck('unit_id')->filter()->values()->all();
+
+        $samplePerUnit = function (int $perUnit, \Closure $extraWhere) use ($unitIdsToSample, $query) {
+            $rows = collect();
+            foreach ($unitIdsToSample as $uid) {
+                $chunk = (clone $query)->with('unit')->where('unit_id', $uid);
+                $extraWhere($chunk);
+                $rows = $rows->concat($chunk->limit($perUnit)->get());
+            }
+            return $rows;
+        };
+
+        // Cap 20/unit — cukup untuk gambaran per unit tanpa payload tak terbatas;
+        // frontend menambahkan "Tampilkan lebih banyak" di atas data yang sudah
+        // diambil ini (bukan server-side pagination, karena Yapinet cuma baca
+        // snapshot cache berkala, tidak fetch live per klik).
+        $rusakAssets = $samplePerUnit(20, function ($q) {
+            $q->where(function ($w) {
+                $w->where('condition', 'rusak')->orWhereIn('status', ['repaired', 'inactive']);
+            });
+        });
 
         $asetRusak = $rusakAssets->map(function (Asset $asset) {
             return [
@@ -69,15 +98,10 @@ class YapinetSummaryController extends Controller
         // perolehan (lihat Asset::canBeDepreciated()) — TIDAK harus punya
         // depreciation_rate kustom, karena aset tanpa nilai kustom tetap
         // disusutkan pakai persentase default global (effective_depreciation_rate,
-        // lihat Asset::DEFAULT_DEPRECIATION_RATE). Filter lama (whereNotNull
-        // 'depreciation_rate') salah mengosongkan tabel ini di produksi,
-        // karena hampir semua aset asli tidak pernah set kolom itu manual.
-        $penyusutanAssets = (clone $query)
-            ->with('unit')
-            ->whereNotNull('aquisition_date')
-            ->where('price', '>', 0)
-            ->limit(10)
-            ->get();
+        // lihat Asset::DEFAULT_DEPRECIATION_RATE).
+        $penyusutanAssets = $samplePerUnit(5, function ($q) {
+            $q->whereNotNull('aquisition_date')->where('price', '>', 0);
+        });
 
         $penyusutan = $penyusutanAssets->map(function (Asset $asset) {
             return [
