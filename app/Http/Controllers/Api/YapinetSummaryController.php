@@ -65,9 +65,17 @@ class YapinetSummaryController extends Controller
             ];
         })->values();
 
+        // Aset yang bisa dihitung penyusutannya = punya harga & tanggal
+        // perolehan (lihat Asset::canBeDepreciated()) — TIDAK harus punya
+        // depreciation_rate kustom, karena aset tanpa nilai kustom tetap
+        // disusutkan pakai persentase default global (effective_depreciation_rate,
+        // lihat Asset::DEFAULT_DEPRECIATION_RATE). Filter lama (whereNotNull
+        // 'depreciation_rate') salah mengosongkan tabel ini di produksi,
+        // karena hampir semua aset asli tidak pernah set kolom itu manual.
         $penyusutanAssets = (clone $query)
             ->with('unit')
-            ->whereNotNull('depreciation_rate')
+            ->whereNotNull('aquisition_date')
+            ->where('price', '>', 0)
             ->limit(10)
             ->get();
 
@@ -77,7 +85,7 @@ class YapinetSummaryController extends Controller
                 'unit' => $asset->unit?->name,
                 'nilai_awal' => (float) $asset->price,
                 'nilai_sekarang' => $asset->book_value,
-                'penyusutan_per_tahun' => (float) $asset->depreciation_rate,
+                'penyusutan_per_tahun' => $asset->effective_depreciation_rate,
             ];
         })->values();
 
