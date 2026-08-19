@@ -266,10 +266,10 @@ export default function TransfersPage() {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground font-semibold mt-1">
-                          {item.from_unit || item.from_unit_name} ({item.from_location || item.from_location_name}) &rarr; <span className="text-primary font-bold">{item.to_location || item.to_location_name}</span>
+                          {item.fromUnit?.name || item.from_unit?.name || (typeof item.from_unit === "string" ? item.from_unit : "") || item.from_unit_name || "Unit"} ({item.fromLocation?.name || item.from_location?.name || (typeof item.from_location === "string" ? item.from_location : "") || item.from_location_name || "Lokasi Asal"}) &rarr; <span className="text-primary font-bold">{item.toLocation?.name || item.to_location?.name || (typeof item.to_location === "string" ? item.to_location : "") || item.to_location_name || "Lokasi Tujuan"}</span>
                         </p>
                         <span className="text-[10px] font-semibold text-muted-foreground mt-1 inline-block">
-                          Diajukan: {item.requested_at || new Date(item.created_at).toLocaleDateString("id-ID")}
+                          Diajukan: {item.requested_at ? new Date(item.requested_at).toLocaleDateString("id-ID") : item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "—"}
                         </span>
                       </div>
                     </div>
@@ -589,14 +589,22 @@ export default function TransfersPage() {
                 <div className="bg-muted/30 border border-border rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-evenly gap-4">
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Dari Lokasi</span>
-                    <span className="text-xs font-black text-foreground mt-0.5">{selectedTransfer.from_unit || selectedTransfer.from_unit_name}</span>
-                    <span className="text-[10px] text-muted-foreground">{selectedTransfer.from_location || selectedTransfer.from_location_name}</span>
+                    <span className="text-xs font-black text-foreground mt-0.5">
+                      {selectedTransfer.fromUnit?.name || selectedTransfer.from_unit?.name || (typeof selectedTransfer.from_unit === "string" ? selectedTransfer.from_unit : "") || selectedTransfer.from_unit_name || "Unit Asal"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {selectedTransfer.fromLocation?.name || selectedTransfer.from_location?.name || (typeof selectedTransfer.from_location === "string" ? selectedTransfer.from_location : "") || selectedTransfer.from_location_name || "Lokasi Asal"}
+                    </span>
                   </div>
                   <ArrowRight className="w-5 h-5 text-primary shrink-0" />
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Ke Lokasi</span>
-                    <span className="text-xs font-black text-foreground mt-0.5">Yayasan</span>
-                    <span className="text-[10px] text-muted-foreground">{selectedTransfer.to_location || selectedTransfer.to_location_name}</span>
+                    <span className="text-xs font-black text-foreground mt-0.5">
+                      {selectedTransfer.toLocation?.unit?.name || "Yayasan"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {selectedTransfer.toLocation?.name || selectedTransfer.to_location?.name || (typeof selectedTransfer.to_location === "string" ? selectedTransfer.to_location : "") || selectedTransfer.to_location_name || "Lokasi Tujuan"}
+                    </span>
                   </div>
                 </div>
 
@@ -628,8 +636,12 @@ export default function TransfersPage() {
                       <User className="w-4 h-4 text-primary shrink-0" />
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Diajukan Oleh</span>
-                        <span className="text-xs font-black text-foreground">{selectedTransfer.requested_by || "User Unit"}</span>
-                        <span className="text-[9px] text-muted-foreground">{selectedTransfer.requested_at || "—"}</span>
+                        <span className="text-xs font-black text-foreground">
+                          {selectedTransfer.requestedBy?.name || selectedTransfer.requested_by?.name || (typeof selectedTransfer.requested_by === "string" ? selectedTransfer.requested_by : "User Unit")}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {selectedTransfer.requested_at ? new Date(selectedTransfer.requested_at).toLocaleDateString("id-ID") : selectedTransfer.created_at ? new Date(selectedTransfer.created_at).toLocaleDateString("id-ID") : "—"}
+                        </span>
                       </div>
                     </div>
                     {selectedTransfer.approved_by && (
@@ -637,8 +649,12 @@ export default function TransfersPage() {
                         <Check className="w-4 h-4 text-secondary shrink-0" />
                         <div className="flex flex-col">
                           <span className="text-[10px] font-bold text-muted-foreground uppercase">Diproses Oleh</span>
-                          <span className="text-xs font-black text-foreground">{selectedTransfer.approved_by}</span>
-                          <span className="text-[9px] text-muted-foreground">{selectedTransfer.completed_at || "Telah disetujui"}</span>
+                          <span className="text-xs font-black text-foreground">
+                            {selectedTransfer.approvedBy?.name || selectedTransfer.approved_by?.name || (typeof selectedTransfer.approved_by === "string" ? selectedTransfer.approved_by : "Super Admin")}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            {selectedTransfer.completed_at ? new Date(selectedTransfer.completed_at).toLocaleDateString("id-ID") : "Telah disetujui"}
+                          </span>
                         </div>
                       </div>
                     )}

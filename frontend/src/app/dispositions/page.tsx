@@ -677,8 +677,12 @@ export default function DispositionsPage() {
                       <User className="w-4 h-4 text-primary shrink-0" />
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Diajukan Oleh</span>
-                        <span className="text-xs font-black text-foreground">{selectedDisposition.processed_by || "User Unit"}</span>
-                        <span className="text-[9px] text-muted-foreground">{selectedDisposition.created_at || "—"}</span>
+                        <span className="text-xs font-black text-foreground">
+                          {selectedDisposition.processedBy?.name || selectedDisposition.processed_by?.name || (typeof selectedDisposition.processed_by === "string" ? selectedDisposition.processed_by : "User Unit")}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {selectedDisposition.created_at ? new Date(selectedDisposition.created_at).toLocaleDateString("id-ID") : "—"}
+                        </span>
                       </div>
                     </div>
                     {selectedDisposition.completed_at && (

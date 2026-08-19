@@ -175,7 +175,7 @@ export default function QrCodePrintPage() {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full print:p-0 print:m-0 print:overflow-visible print:max-h-none print:w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 w-full min-h-screen pb-16 print:p-0 print:m-0 print:overflow-visible print:max-h-none print:w-full">
         {/* Header - Screen only */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm print:hidden">
           <div className="flex items-center gap-3">
