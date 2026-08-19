@@ -302,11 +302,19 @@ class AssetResource extends Resource
                 Tables\Filters\SelectFilter::make('unit_id')
                     ->relationship('unit', 'name')
                     ->label('Unit')
-                    ->searchable(),
+                    ->searchable()
+                    ->hidden(fn () => Auth::user()?->hasRole('Unit')),
                 Tables\Filters\SelectFilter::make('location_id')
-                    ->relationship('location', 'name')
-                    ->label('Lokasi')
-                    ->searchable(),
+                    ->relationship('location', 'name', function (Builder $query) {
+                        $user = Auth::user();
+                        if ($user && $user->hasRole('Unit') && $user->unit_id) {
+                            return $query->where('unit_id', $user->unit_id);
+                        }
+                        return $query;
+                    })
+                    ->label('Lokasi / Ruangan')
+                    ->searchable()
+                    ->preload(),
                 Tables\Filters\SelectFilter::make('category_id')
                     ->relationship('category', 'name')
                     ->label('Kategori')

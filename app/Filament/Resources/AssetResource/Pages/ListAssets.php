@@ -70,9 +70,9 @@ class ListAssets extends ListRecords
     {
         $user = Auth::user();
 
-        // Role Unit: tampilkan tabs berdasarkan lokasi unit mereka
+        // Role Unit: tampilkan tabs berdasarkan kondisi/status aset unit mereka
         if ($user->hasRole('Unit') && $user->unit_id) {
-            return $this->getLocationTabs($user->unit_id);
+            return $this->getUnitConditionTabs($user->unit_id);
         }
 
         // Role Admin/Manajer: tampilkan tabs berdasarkan unit
@@ -127,43 +127,49 @@ class ListAssets extends ListRecords
     }
 
     /**
-     * Tabs untuk role Unit - berdasarkan Lokasi dalam unit mereka
+     * Tabs untuk role Unit - berdasarkan Kondisi/Status dalam unit mereka
+     * Menghindari pembuatan puluhan tab per ruangan yang merusak layout tabel
      * Badge counts cached for 60 seconds to improve performance
      */
-    protected function getLocationTabs(int $unitId): array
+    protected function getUnitConditionTabs(int $unitId): array
     {
-        // Pre-fetch all location counts in a single query
-        $counts = Cache::remember("asset_location_counts_{$unitId}", 60, function () use ($unitId) {
+        $counts = Cache::remember("asset_unit_condition_counts_{$unitId}", 60, function () use ($unitId) {
             return $this->getAssetBaseQuery()
                 ->where('unit_id', $unitId)
-                ->selectRaw('location_id, COUNT(*) as count')
-                ->groupBy('location_id')
-                ->pluck('count', 'location_id')
-                ->toArray();
+                ->selectRaw('
+                    COUNT(*) as total,
+                    SUM(CASE WHEN `condition` = "bagus" THEN 1 ELSE 0 END) as bagus,
+                    SUM(CASE WHEN `condition` = "rusak" THEN 1 ELSE 0 END) as rusak,
+                    SUM(CASE WHEN status != "active" THEN 1 ELSE 0 END) as non_aktif
+                ')
+                ->first();
         });
 
-        $totalCount = array_sum($counts);
-
-        $tabs = [
-            'all' => Tab::make('Semua Lokasi')
-                ->label('Semua Lokasi')
-                ->badge($totalCount)
+        return [
+            'all' => Tab::make('Semua Aset')
+                ->label('Semua Aset')
+                ->badge($counts->total ?? 0)
                 ->badgeColor('primary')
                 ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId)),
-        ];
 
-        $locations = Location::where('unit_id', $unitId)->select(['id', 'name'])->get();
-
-        foreach ($locations as $location) {
-            $locationId = $location->id;
-            $tabs["location_{$locationId}"] = Tab::make($location->name)
-                ->label($location->name)
-                ->badge($counts[$locationId] ?? 0)
+            'bagus' => Tab::make('Kondisi Bagus')
+                ->label('Kondisi Bagus')
+                ->badge($counts->bagus ?? 0)
                 ->badgeColor('success')
-                ->modifyQueryUsing(fn ($query) => $query->where('location_id', $locationId));
-        }
+                ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId)->where('condition', 'bagus')),
 
-        return $tabs;
+            'rusak' => Tab::make('Kondisi Rusak')
+                ->label('Kondisi Rusak')
+                ->badge($counts->rusak ?? 0)
+                ->badgeColor('danger')
+                ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId)->where('condition', 'rusak')),
+
+            'non_aktif' => Tab::make('Perlu Perbaikan / Non-Aktif')
+                ->label('Perlu Perbaikan / Non-Aktif')
+                ->badge($counts->non_aktif ?? 0)
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn ($query) => $query->where('unit_id', $unitId)->where('status', '!=', 'active')),
+        ];
     }
 
     public function updatedActiveTab(): void
@@ -175,12 +181,8 @@ class ListAssets extends ListRecords
         $this->activeLocationId = null;
 
         if ($user->hasRole('Unit') && $user->unit_id) {
-            // Role Unit: set unit_id tetap, track location
+            // Role Unit: set unit_id tetap
             $this->activeUnitId = $user->unit_id;
-
-            if (Str::startsWith($this->activeTab, 'location_')) {
-                $this->activeLocationId = (int) Str::after($this->activeTab, 'location_');
-            }
         } else {
             // Role Admin/Manajer: track unit
             if (Str::startsWith($this->activeTab, 'unit_')) {
@@ -204,10 +206,6 @@ class ListAssets extends ListRecords
         if ($user->hasRole('Unit') && $user->unit_id) {
             // Role Unit: set unit_id tetap
             $this->activeUnitId = $user->unit_id;
-
-            if (Str::startsWith($this->activeTab, 'location_')) {
-                $this->activeLocationId = (int) Str::after($this->activeTab, 'location_');
-            }
         } else {
             // Role Admin/Manajer
             if (Str::startsWith($this->activeTab, 'unit_')) {

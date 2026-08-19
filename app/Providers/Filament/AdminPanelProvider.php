@@ -71,6 +71,29 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->profile(EditProfile::class)
             ->renderHook(
+                \Filament\View\PanelsRenderHook::HEAD_END,
+                fn (): string => '
+                    <style>
+                        /* Safeguard: Ensure tabs container is horizontally scrollable and never forces parent layout expansion */
+                        .fi-tabs {
+                            max-width: 100%;
+                            overflow-x: auto !important;
+                            flex-wrap: nowrap !important;
+                            scrollbar-width: thin;
+                        }
+                        /* Safeguard: Ensure table content container respects full width */
+                        .fi-ta {
+                            width: 100% !important;
+                            min-width: 0 !important;
+                        }
+                        .fi-ta-content {
+                            width: 100% !important;
+                            min-width: 0 !important;
+                        }
+                    </style>
+                '
+            )
+            ->renderHook(
                 \Filament\View\PanelsRenderHook::BODY_START,
                 fn (): string => \Illuminate\Support\Facades\Blade::render('
                     <!-- Simaya Loading Overlay to prevent FOUC (Flash of Unstyled Content) -->
