@@ -4,8 +4,15 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/api";
-import { Wrench, Plus, Search, Menu, Edit, Trash, X, Loader2 } from "lucide-react";
+import { Wrench, Plus, Search, Menu, Edit, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export default function ToolsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,231 +107,247 @@ export default function ToolsPage() {
     <div className="flex bg-background min-h-screen relative overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
-        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-background border border-border-peach hover:text-primary flex lg:hidden items-center justify-center transition-colors flex-shrink-0"
+              className="lg:hidden rounded-2xl shrink-0"
             >
               <Menu className="w-5 h-5" />
-            </button>
+            </Button>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center text-primary shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center text-primary border border-primary/20 shrink-0">
                 <Wrench className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-extrabold font-serif text-foreground">Daftar Alat & Barang</h2>
-                <p className="text-xs text-foreground/50 font-medium mt-1">Kelola data template item barang/alat inventaris.</p>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">Kelola data template item barang/alat inventaris.</p>
               </div>
             </div>
           </div>
-          <button
+          <Button
             onClick={() => setCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-md shadow-primary/10 transition-colors w-full sm:w-auto justify-center"
+            className="rounded-2xl gap-2 h-11 px-5 shadow-md shadow-primary/20 text-xs font-bold"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Barang</span>
-          </button>
+          </Button>
         </header>
 
         {/* Filter and Search */}
-        <section className="bg-white border border-border-peach rounded-3xl p-4 flex gap-4 items-center shadow-sm">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-foreground/45 absolute left-4 top-3.5" />
-            <input
-              type="text"
-              placeholder="Cari nama barang, kode nomor, atau kode nama..."
-              value={searchQuery}
-              onChange={(e) => { 
-                setSearchQuery(e.target.value); 
-                setCurrentPage(1); 
-              }}
-              className="w-full pl-11 pr-4 py-3 bg-background border border-border-peach rounded-2xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/50 text-foreground transition-colors"
-            />
-          </div>
-        </section>
+        <Card className="rounded-2xl shadow-sm">
+          <CardContent className="p-3 sm:p-4">
+            <div className="relative">
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Cari nama barang, kode nomor, atau kode nama..."
+                value={searchQuery}
+                onChange={(e) => { 
+                  setSearchQuery(e.target.value); 
+                  setCurrentPage(1); 
+                }}
+                className="pl-9 h-11 rounded-xl text-xs bg-muted/30"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Data Table */}
-        <section className="bg-white border border-border-peach rounded-3xl overflow-hidden shadow-card relative">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <p className="text-xs text-foreground/60 font-semibold">Memuat data barang...</p>
-            </div>
-          ) : (
-            <>
-              <div className="w-full overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="bg-primary-light/40 border-b border-border-peach">
-                      <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Kode Nomor</th>
-                      <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Kode Nama</th>
-                      <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Nama Barang</th>
-                      <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Tanggal Dibuat</th>
-                      <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-peach/50">
+        <Card className="rounded-3xl shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-xs text-muted-foreground font-semibold">Memuat data barang...</p>
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kode Nomor</TableHead>
+                      <TableHead>Kode Nama</TableHead>
+                      <TableHead>Nama Barang</TableHead>
+                      <TableHead>Tanggal Dibuat</TableHead>
+                      <TableHead className="text-center">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {tools.map((tool) => (
-                      <tr key={tool.id} className="hover:bg-primary-light/10 transition-colors">
-                        <td className="p-5 text-xs font-bold text-primary">{tool.code}</td>
-                        <td className="p-5 text-xs font-extrabold text-foreground/80">
-                          <span className="px-2 py-1 bg-primary-light text-primary rounded-lg text-[10px] font-bold">
+                      <TableRow key={tool.id}>
+                        <TableCell className="font-bold text-primary font-mono">{tool.code}</TableCell>
+                        <TableCell>
+                          <Badge variant="primaryLight" className="font-mono text-[10px] font-bold">
                             {tool.code_name}
-                          </span>
-                        </td>
-                        <td className="p-5 text-xs font-extrabold text-foreground">{tool.name}</td>
-                        <td className="p-5 text-xs font-semibold text-foreground/60">
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-extrabold text-foreground">{tool.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
                           {tool.created_at ? new Date(tool.created_at).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "short",
                             year: "numeric"
-                          }) : "-"}
-                        </td>
-                        <td className="p-5 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
+                          }) : "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setEditModal(tool)}
-                              className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-primary transition-colors shadow-sm"
+                              className="h-8 w-8 rounded-lg border border-border"
+                              title="Ubah Barang"
                             >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleDelete(tool.id)}
-                              className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-red-500 transition-colors shadow-sm"
+                              className="h-8 w-8 rounded-lg border border-border text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Hapus Barang"
                             >
-                              <Trash className="w-4 h-4" />
-                            </button>
+                              <Trash className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
                     {tools.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="p-8 text-center text-xs font-semibold text-foreground/40">
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-12 text-center text-xs font-semibold text-muted-foreground">
                           Tidak ada data barang ditemukan.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                perPage={perPage}
-                onPageChange={setCurrentPage}
-                onPerPageChange={setPerPage}
-              />
-            </>
-          )}
-        </section>
+                  </TableBody>
+                </Table>
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  perPage={perPage}
+                  onPageChange={setCurrentPage}
+                  onPerPageChange={setPerPage}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
       {/* Create Modal */}
-      {createModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in zoom-in duration-200">
-            <button
-              onClick={() => setCreateModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-base font-extrabold text-foreground font-serif">Tambah Barang</h3>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nama Barang</label>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Contoh: AC Daikin 1 PK..."
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Kode Nomor</label>
-                <input
-                  type="text"
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="Contoh: BRG-005"
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Kode Nama</label>
-                <input
-                  type="text"
-                  value={newCodeName}
-                  onChange={(e) => setNewCodeName(e.target.value)}
-                  placeholder="Contoh: AC-DKN"
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
-                  required
-                />
-              </div>
-              <button type="submit" className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover transition-colors">
+      <Dialog open={createModal} onOpenChange={setCreateModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Tambah Barang</DialogTitle>
+            <DialogDescription className="text-xs">
+              Tambahkan template data alat/barang inventaris baru.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tool-name">Nama Barang</Label>
+              <Input
+                id="tool-name"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Contoh: AC Daikin 1 PK..."
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tool-code">Kode Nomor</Label>
+              <Input
+                id="tool-code"
+                type="text"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value)}
+                placeholder="Contoh: BRG-005"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tool-code-name">Kode Nama</Label>
+              <Input
+                id="tool-code-name"
+                type="text"
+                value={newCodeName}
+                onChange={(e) => setNewCodeName(e.target.value)}
+                placeholder="Contoh: AC-DKN"
+                required
+              />
+            </div>
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button type="submit" className="rounded-xl">
                 Simpan Barang
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Modal */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in zoom-in duration-200">
-            <button
-              onClick={() => setEditModal(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-base font-extrabold text-foreground font-serif">Ubah Barang</h3>
-            <form onSubmit={handleEdit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nama Barang</label>
-                <input
+      <Dialog open={!!editModal} onOpenChange={(open) => !open && setEditModal(null)}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Ubah Barang</DialogTitle>
+            <DialogDescription className="text-xs">
+              Perbarui data alat atau barang inventaris.
+            </DialogDescription>
+          </DialogHeader>
+          {editModal && (
+            <form onSubmit={handleEdit} className="flex flex-col gap-4 mt-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-tool-name">Nama Barang</Label>
+                <Input
+                  id="edit-tool-name"
                   type="text"
                   value={editModal.name}
                   onChange={(e) => setEditModal({ ...editModal, name: e.target.value })}
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
                   required
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Kode Nomor</label>
-                <input
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-tool-code">Kode Nomor</Label>
+                <Input
+                  id="edit-tool-code"
                   type="text"
                   value={editModal.code}
                   onChange={(e) => setEditModal({ ...editModal, code: e.target.value })}
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
                   required
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Kode Nama</label>
-                <input
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-tool-code-name">Kode Nama</Label>
+                <Input
+                  id="edit-tool-code-name"
                   type="text"
                   value={editModal.code_name}
                   onChange={(e) => setEditModal({ ...editModal, code_name: e.target.value })}
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold text-foreground"
                   required
                 />
               </div>
-              <button type="submit" className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover transition-colors">
-                Simpan Perubahan
-              </button>
+              <DialogFooter className="mt-2">
+                <Button type="button" variant="outline" onClick={() => setEditModal(null)} className="rounded-xl">
+                  Batal
+                </Button>
+                <Button type="submit" className="rounded-xl">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

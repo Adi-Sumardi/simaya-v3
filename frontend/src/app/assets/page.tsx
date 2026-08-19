@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Pagination from "@/components/ui/Pagination";
 import Sidebar from "@/components/layout/Sidebar";
+import AssetQrSticker from "@/components/common/AssetQrSticker";
 import { api } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { 
@@ -10,12 +11,9 @@ import {
   Plus, 
   Search, 
   Filter, 
-  ArrowUpDown, 
   Eye, 
   Edit, 
   Menu, 
-  Check, 
-  X, 
   Building, 
   MapPin, 
   Camera, 
@@ -23,14 +21,28 @@ import {
   Trash,
   QrCode,
   Download,
+  Upload,
   Info,
   Calendar,
   FileText,
   DollarSign,
   Tag,
   Wrench,
-  Loader2
+  Loader2,
+  ExternalLink,
+  ShieldCheck,
+  TrendingDown,
+  Image as ImageIcon
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AssetsPage() {
   const toast = useToast();
@@ -44,6 +56,7 @@ export default function AssetsPage() {
   const [viewModal, setViewModal] = useState<any | null>(null);
   const [bulkUnitLocationModal, setBulkUnitLocationModal] = useState(false);
   const [bulkPhotoModal, setBulkPhotoModal] = useState(false);
+  const [importExcelModal, setImportExcelModal] = useState(false);
   const [qrCodePrintModal, setQrCodePrintModal] = useState(false);
 
   // Advanced Filter state
@@ -72,6 +85,20 @@ export default function AssetsPage() {
   const [mockTools, setMockTools] = useState<any[]>([]);
   const [mockYears, setMockYears] = useState<any[]>([]);
   const [mockAktiva, setMockAktiva] = useState<any[]>([]);
+  const [statsData, setStatsData] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("auth_user");
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        setCurrentUser(u);
+      } catch (e) {}
+    }
+  }, []);
+
+  const isUnitRole = currentUser?.role === "Unit" || (!["super_admin", "admin"].includes(currentUser?.role) && !!currentUser?.unit_id);
 
   // Primary assets data state
   const [assets, setAssets] = useState<any[]>([]);
@@ -79,64 +106,69 @@ export default function AssetsPage() {
 
   // Debounce search input to searchQuery
   useEffect(() => {
-    const handler = setTimeout(() => {
+    const timer = setTimeout(() => {
       setSearchQuery(searchInput);
       setCurrentPage(1);
     }, 400);
-    return () => clearTimeout(handler);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // Fetch all support metadata from Laravel API once on mount
   const fetchMetadata = async () => {
     try {
-      const [u, l, c, t, y, a] = await Promise.all([
+      const [unitsData, locationsData, categoriesData, toolsData, yearsData, aktivaData, statsResp] = await Promise.all([
         api.get("/units/all"),
         api.get("/locations/all"),
         api.get("/categories/all"),
         api.get("/tools/all"),
         api.get("/years/all"),
         api.get("/aktivas/all"),
+        api.get("/assets/stats"),
       ]);
-      setMockUnits(u || []);
-      setMockLocations(l || []);
-      setMockCategories(c || []);
-      setMockTools(t || []);
-      setMockYears(y || []);
-      setMockAktiva(a || []);
+
+      setMockUnits(unitsData || []);
+      setMockLocations(locationsData || []);
+      setMockCategories(categoriesData || []);
+      setMockTools(toolsData || []);
+      setMockYears(yearsData || []);
+      setMockAktiva(aktivaData || []);
+      setStatsData(statsResp || null);
     } catch (err) {
-      console.error("Failed to load metadata", err);
+      console.error("Failed to load metadata from backend", err);
     }
   };
 
+  // Fetch paginated Assets with server-side query filters
   const fetchAssets = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      params.append("page", String(currentPage));
-      params.append("per_page", String(perPage));
-      
+      params.set("page", currentPage.toString());
+      params.set("per_page", perPage.toString());
+
       if (activeTab !== "all") {
-        params.append("unit_id", activeTab);
+        params.set("unit_id", activeTab);
       }
-      if (searchQuery) {
-        params.append("search", searchQuery);
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
       }
       if (filterStatus !== "all") {
-        params.append("status", filterStatus);
+        params.set("status", filterStatus);
       }
       if (filterCondition !== "all") {
-        params.append("condition", filterCondition);
+        params.set("condition", filterCondition);
       }
       if (filterCategory !== "all") {
-        params.append("category_id", filterCategory);
+        params.set("category_id", filterCategory);
       }
       if (filterLocation !== "all") {
-        params.append("location_id", filterLocation);
+        params.set("location_id", filterLocation);
       }
 
-      const res = await api.get(`/assets?${params.toString()}`);
-      setAssets(res.data || []);
-      setTotalItems(res.total || 0);
-      setTotalPages(res.last_page || 0);
+      const response = await api.get(`/assets?${params.toString()}`);
+      setAssets(response.data || []);
+      setTotalItems(response.meta?.total || response.total || 0);
+      setTotalPages(response.meta?.last_page || response.last_page || 1);
     } catch (err) {
       console.error("Failed to load assets from backend", err);
     } finally {
@@ -144,8 +176,9 @@ export default function AssetsPage() {
     }
   };
 
-  const fetchAllData = async () => {
-    await Promise.all([fetchMetadata(), fetchAssets()]);
+  const fetchAllData = () => {
+    fetchMetadata();
+    fetchAssets();
   };
 
   useEffect(() => {
@@ -186,36 +219,41 @@ export default function AssetsPage() {
     condition: "bagus",
     portability: "portable",
     price: "",
-    aquisition: "",
-    aquisition_date: "",
+    depreciation_rate: "10",
+    aquisition: "YAPI",
+    aquisition_date: new Date().toISOString().split("T")[0],
     unit_id: "",
     location_id: "",
     tool_id: "",
     category_id: "",
     year_id: "",
     aktiva_id: "",
-    image: null as any
+    image_file: null as any
   });
 
-  // Automatically select first element for form select dropdowns once metadata is loaded
   useEffect(() => {
     if (mockUnits.length > 0 && !formData.unit_id) {
+      const defaultUnit = isUnitRole && currentUser?.unit_id 
+        ? String(currentUser.unit?.id || currentUser.unit_id)
+        : String(mockUnits[0]?.id || "1");
+      const matchedLocs = mockLocations.filter(l => String(l.unit_id) === defaultUnit);
       setFormData(prev => ({
         ...prev,
-        unit_id: String(mockUnits[0]?.id || "1"),
-        location_id: String(mockLocations[0]?.id || "1"),
+        unit_id: defaultUnit,
+        location_id: String(matchedLocs[0]?.id || mockLocations[0]?.id || "1"),
         tool_id: String(mockTools[0]?.id || "1"),
         category_id: String(mockCategories[0]?.id || "1"),
         year_id: String(mockYears[0]?.id || "1"),
         aktiva_id: String(mockAktiva[0]?.id || "1"),
       }));
     }
-  }, [mockUnits, mockLocations, mockTools, mockCategories, mockYears, mockAktiva]);
+  }, [mockUnits, mockLocations, mockTools, mockCategories, mockYears, mockAktiva, currentUser, isUnitRole]);
 
+  // Bulk actions states
   const [bulkUnit, setBulkUnit] = useState("");
   const [bulkLocation, setBulkLocation] = useState("");
+  const [bulkPhotoFile, setBulkPhotoFile] = useState<File | null>(null);
 
-  // Handler functions
   const handleToggleSelectRow = (id: number) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter(x => x !== id));
@@ -237,7 +275,7 @@ export default function AssetsPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: any = {
         name: formData.name,
         entries_number: Number(formData.entries_number),
         brand: formData.brand,
@@ -246,6 +284,7 @@ export default function AssetsPage() {
         condition: formData.condition,
         portability: formData.portability,
         price: Number(formData.price || 0),
+        depreciation_rate: formData.depreciation_rate ? Number(formData.depreciation_rate) : 10,
         aquisition: formData.aquisition,
         aquisition_date: formData.aquisition_date || new Date().toISOString().split("T")[0],
         unit_id: Number(formData.unit_id),
@@ -256,20 +295,28 @@ export default function AssetsPage() {
         aktiva_id: Number(formData.aktiva_id)
       };
 
-      await api.post("/assets", payload);
+      if (formData.image_file) {
+        const data = new FormData();
+        Object.entries(payload).forEach(([k, v]) => data.append(k, String(v)));
+        data.append("image_file", formData.image_file);
+        await api.post("/assets", data);
+      } else {
+        await api.post("/assets", payload);
+      }
+
       setCreateModal(false);
       resetForm();
-      toast.success("Aset berhasil ditambahkan!");
+      toast.success("Aset inventaris berhasil ditambahkan!");
       fetchAllData();
     } catch (err: any) {
-      toast.error(err.message || "Gagal membuat aset");
+      toast.error(err.message || "Gagal menambahkan aset");
     }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: any = {
         name: editModal.name,
         entries_number: Number(editModal.entries_number),
         brand: editModal.brand,
@@ -278,8 +325,9 @@ export default function AssetsPage() {
         condition: editModal.condition,
         portability: editModal.portability,
         price: Number(editModal.price || 0),
+        depreciation_rate: editModal.depreciation_rate ? Number(editModal.depreciation_rate) : 10,
         aquisition: editModal.aquisition,
-        aquisition_date: editModal.aquisition_date,
+        aquisition_date: editModal.aquisition_date || new Date().toISOString().split("T")[0],
         unit_id: Number(editModal.unit_id),
         location_id: Number(editModal.location_id),
         tool_id: Number(editModal.tool_id),
@@ -288,9 +336,17 @@ export default function AssetsPage() {
         aktiva_id: Number(editModal.aktiva_id)
       };
 
-      await api.put(`/assets/${editModal.id}`, payload);
+      if (editModal.image_file) {
+        const data = new FormData();
+        Object.entries(payload).forEach(([k, v]) => data.append(k, String(v)));
+        data.append("image_file", editModal.image_file);
+        await api.put(`/assets/${editModal.id}`, data);
+      } else {
+        await api.put(`/assets/${editModal.id}`, payload);
+      }
+
       setEditModal(null);
-      toast.success("Aset berhasil diperbarui!");
+      toast.success("Aset inventaris berhasil diperbarui!");
       fetchAllData();
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui aset");
@@ -311,6 +367,8 @@ export default function AssetsPage() {
   };
 
   const resetForm = () => {
+    const defaultUnit = String(mockUnits[0]?.id || "1");
+    const matchedLocs = mockLocations.filter(l => String(l.unit_id) === defaultUnit);
     setFormData({
       name: "",
       entries_number: "1",
@@ -320,15 +378,16 @@ export default function AssetsPage() {
       condition: "bagus",
       portability: "portable",
       price: "",
-      aquisition: "",
-      aquisition_date: "",
-      unit_id: String(mockUnits[0]?.id || "1"),
-      location_id: String(mockLocations[0]?.id || "1"),
+      depreciation_rate: "10",
+      aquisition: "YAPI",
+      aquisition_date: new Date().toISOString().split("T")[0],
+      unit_id: defaultUnit,
+      location_id: String(matchedLocs[0]?.id || mockLocations[0]?.id || "1"),
       tool_id: String(mockTools[0]?.id || "1"),
       category_id: String(mockCategories[0]?.id || "1"),
       year_id: String(mockYears[0]?.id || "1"),
       aktiva_id: String(mockAktiva[0]?.id || "1"),
-      image: null
+      image_file: null
     });
   };
 
@@ -340,25 +399,45 @@ export default function AssetsPage() {
         unit_id: Number(bulkUnit),
         location_id: Number(bulkLocation)
       });
-      alert("Unit dan Lokasi aset berhasil diperbarui secara massal!");
+      toast.success("Unit dan Lokasi aset berhasil diperbarui secara massal!");
       setSelectedIds([]);
       setBulkUnitLocationModal(false);
       fetchAllData();
     } catch (err: any) {
-      alert(err.message || "Gagal memperbarui aset massal");
+      toast.error(err.message || "Gagal memperbarui aset massal");
+    }
+  };
+
+  const handleExecuteBulkPhoto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkPhotoFile) {
+      toast.error("Pilih file foto terlebih dahulu");
+      return;
+    }
+    try {
+      const data = new FormData();
+      selectedIds.forEach(id => data.append("ids[]", String(id)));
+      data.append("image_file", bulkPhotoFile);
+
+      await api.post("/assets/bulk-add-photo", data);
+      toast.success("Foto massal berhasil dipasang pada aset terpilih!");
+      setSelectedIds([]);
+      setBulkPhotoFile(null);
+      setBulkPhotoModal(false);
+      fetchAllData();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memasang foto massal");
     }
   };
 
   const handleExportExcel = () => {
-    alert("Unduhan asset.xlsx dimulai...");
+    toast.info("Unduhan file Excel data aset sedang dipersiapkan...");
   };
 
-  // Calculate total across all units workspace-wide
   const totalAllAssets = useMemo(() => {
     return mockUnits.reduce((acc, u) => acc + (u.asset_count || 0), 0);
   }, [mockUnits]);
 
-  // Reset page when filters change
   const handleFilterChange = (setter: (v: any) => void, value: any) => {
     setter(value);
     setCurrentPage(1);
@@ -368,982 +447,516 @@ export default function AssetsPage() {
     <div className="flex bg-background min-h-screen relative overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full relative">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full relative">
         
         {/* Header */}
-        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
+        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-background border border-border-peach hover:text-primary flex lg:hidden items-center justify-center transition-colors flex-shrink-0"
+              className="lg:hidden rounded-2xl shrink-0"
             >
               <Menu className="w-5 h-5" />
-            </button>
+            </Button>
             <div>
               <h2 className="text-xl sm:text-2xl font-extrabold font-serif text-foreground">Daftar Assets</h2>
-              <p className="text-xs text-foreground/50 font-medium mt-1">Registrasi, kelola, cetak label barcode QR, dan ekspor database aset.</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">Registrasi, kelola, cetak label barcode QR, dan ekspor database aset yayasan.</p>
             </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button 
+          <div className="flex gap-2.5 w-full sm:w-auto flex-wrap">
+            <Button 
+              variant="outline"
+              onClick={() => setImportExcelModal(true)}
+              className="flex-1 sm:flex-none gap-2 rounded-2xl h-11 px-4 text-xs font-bold"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Import Excel</span>
+            </Button>
+            <Button 
+              variant="outline"
               onClick={handleExportExcel}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 bg-white border border-border-peach text-foreground/75 hover:text-primary hover:border-primary/50 rounded-2xl font-bold text-xs shadow-sm transition-colors"
+              className="flex-1 sm:flex-none gap-2 rounded-2xl h-11 px-4 text-xs font-bold"
             >
               <Download className="w-4 h-4" />
               <span>Export</span>
-            </button>
-            <button 
+            </Button>
+            <Button 
               onClick={() => setCreateModal(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-md shadow-primary/10 transition-colors"
+              className="flex-1 sm:flex-none gap-2 rounded-2xl h-11 px-5 text-xs font-bold shadow-md shadow-primary/20"
             >
               <Plus className="w-4 h-4" />
               <span>Tambah Asset</span>
-            </button>
+            </Button>
           </div>
         </header>
 
-        {/* Tab Unit Selector (Matching getUnitTabs in ListAssets.php) */}
-        <section className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-          <button
-            onClick={() => { handleFilterChange(setActiveTab, "all"); setSelectedIds([]); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === "all" ? "bg-primary text-white font-extrabold" : "bg-white border border-border-peach text-foreground/60"
-            }`}
-          >
-            <span>Semua Unit</span>
-            <span className={`px-2 py-0.5 rounded text-[10px] ${activeTab === "all" ? "bg-white/20 text-white" : "bg-primary-light text-primary"}`}>
-              {totalAllAssets}
-            </span>
-          </button>
-          {mockUnits.map(unit => {
-            const count = unit.asset_count || 0;
-            return (
-              <button
-                key={unit.id}
-                onClick={() => { handleFilterChange(setActiveTab, unit.id.toString()); setSelectedIds([]); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
-                  activeTab === unit.id.toString() ? "bg-primary text-white" : "bg-white border border-border-peach text-foreground/60"
-                }`}
+        {/* Tab Unit / Condition Selector (Filament Parity) */}
+        <section className="flex flex-wrap gap-2 items-center w-full">
+          {isUnitRole ? (
+            // Filament Unit Condition Tabs: Semua Aset, Kondisi Bagus, Kondisi Rusak, Non-Aktif
+            <>
+              <Button
+                variant={filterCondition === "all" && filterStatus === "all" ? "default" : "outline"}
+                onClick={() => {
+                  setFilterCondition("all");
+                  setFilterStatus("all");
+                  setCurrentPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${filterCondition === "all" && filterStatus === "all" ? "shadow-sm shadow-primary/20" : "bg-card"}`}
               >
-                <span>{unit.name}</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] ${activeTab === unit.id.toString() ? "bg-white/20 text-white" : "bg-secondary-light text-secondary"}`}>
-                  {count}
+                <span>Semua Aset Unit</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${filterCondition === "all" && filterStatus === "all" ? "bg-white/20 text-white" : "bg-muted text-foreground"}`}>
+                  {statsData?.total_assets ?? totalAllAssets}
                 </span>
-              </button>
-            );
-          })}
-        </section>
+              </Button>
 
-        {/* Filters and Search Bar */}
-        <section className="bg-white border border-border-peach rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-80 group">
-              <Search className="w-4 h-4 text-foreground/45 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-primary transition-colors" />
-              <input 
-                type="text" 
-                placeholder="Cari nama aset, brand, atau nomor urut..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-background border border-border-peach rounded-2xl text-xs font-semibold text-foreground focus:outline-none focus:border-primary transition-all"
-              />
-            </div>
+              <Button
+                variant={filterCondition === "bagus" ? "default" : "outline"}
+                onClick={() => {
+                  setFilterCondition("bagus");
+                  setFilterStatus("all");
+                  setCurrentPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${filterCondition === "bagus" ? "shadow-sm shadow-primary/20" : "bg-card"}`}
+              >
+                <span>Kondisi Bagus</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${filterCondition === "bagus" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+                  {statsData?.conditions?.bagus ?? 0}
+                </span>
+              </Button>
 
-            <button 
-              onClick={() => setFilterOpen(!filterOpen)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-colors border ${
-                filterOpen ? "bg-primary-light text-primary border-primary" : "bg-background border-border-peach text-foreground/75 hover:border-primary/50"
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              <span>{filterOpen ? "Tutup Filter" : "Filter Lanjutan"}</span>
-            </button>
-          </div>
+              <Button
+                variant={filterCondition === "rusak" ? "default" : "outline"}
+                onClick={() => {
+                  setFilterCondition("rusak");
+                  setFilterStatus("all");
+                  setCurrentPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${filterCondition === "rusak" ? "shadow-sm shadow-primary/20" : "bg-card"}`}
+              >
+                <span>Kondisi Rusak</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${filterCondition === "rusak" ? "bg-white/20 text-white" : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400"}`}>
+                  {statsData?.conditions?.rusak ?? 0}
+                </span>
+              </Button>
 
-          {/* Collapsible Filter Forms (Matching Filament table filters) */}
-          {filterOpen && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border-peach/50 animate-in fade-in duration-200">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black text-foreground/50 uppercase">Kondisi</label>
-                <select 
-                  value={filterCondition} 
-                  onChange={(e) => handleFilterChange(setFilterCondition, e.target.value)}
-                  className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                >
-                  <option value="all">Semua Kondisi</option>
-                  <option value="bagus">Bagus</option>
-                  <option value="rusak">Rusak</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black text-foreground/50 uppercase">Status</label>
-                <select 
-                  value={filterStatus} 
-                  onChange={(e) => handleFilterChange(setFilterStatus, e.target.value)}
-                  className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Tidak Aktif</option>
-                  <option value="repaired">Diperbaiki</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black text-foreground/50 uppercase">Kategori</label>
-                <select 
-                  value={filterCategory} 
-                  onChange={(e) => handleFilterChange(setFilterCategory, e.target.value)}
-                  className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                >
-                  <option value="all">Semua Kategori</option>
-                  {mockCategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black text-foreground/50 uppercase">Lokasi Ruangan</label>
-                <select 
-                  value={filterLocation} 
-                  onChange={(e) => handleFilterChange(setFilterLocation, e.target.value)}
-                  className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                >
-                  <option value="all">Semua Lokasi</option>
-                  {mockLocations.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+              <Button
+                variant={filterStatus === "inactive" || filterStatus === "repaired" ? "default" : "outline"}
+                onClick={() => {
+                  setFilterCondition("all");
+                  setFilterStatus("inactive,repaired");
+                  setCurrentPage(1);
+                  setSelectedIds([]);
+                }}
+                className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${filterStatus === "inactive" || filterStatus === "repaired" ? "shadow-sm shadow-primary/20" : "bg-card"}`}
+              >
+                <span>Perlu Perbaikan / Non-Aktif</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${filterStatus === "inactive" || filterStatus === "repaired" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"}`}>
+                  {(statsData?.statuses?.repaired ?? 0) + (statsData?.statuses?.inactive ?? 0)}
+                </span>
+              </Button>
+            </>
+          ) : (
+            // Admin Superadmin Unit Tabs
+            <>
+              <Button
+                variant={activeTab === "all" ? "default" : "outline"}
+                onClick={() => { handleFilterChange(setActiveTab, "all"); setSelectedIds([]); }}
+                className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${activeTab === "all" ? "shadow-sm shadow-primary/20" : "bg-card"}`}
+              >
+                <span>Semua Unit</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${activeTab === "all" ? "bg-white/20 text-white" : "bg-muted text-foreground"}`}>
+                  {totalAllAssets}
+                </span>
+              </Button>
+              {mockUnits.map(unit => {
+                const count = unit.asset_count || 0;
+                const isCurrent = activeTab === unit.id.toString();
+                return (
+                  <Button
+                    key={unit.id}
+                    variant={isCurrent ? "default" : "outline"}
+                    onClick={() => { handleFilterChange(setActiveTab, unit.id.toString()); setSelectedIds([]); }}
+                    className={`rounded-2xl text-xs font-bold gap-2 shrink-0 ${isCurrent ? "shadow-sm shadow-primary/20" : "bg-card"}`}
+                  >
+                    <span>{unit.name}</span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${isCurrent ? "bg-white/20 text-white" : "bg-secondary-light text-secondary"}`}>
+                      {count}
+                    </span>
+                  </Button>
+                );
+              })}
+            </>
           )}
         </section>
 
-        {/* Data Table */}
-        <section className="bg-white border border-border-peach rounded-3xl overflow-hidden shadow-card mb-20">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead>
-                <tr className="bg-primary-light/40 border-b border-border-peach">
-                  <th className="p-5 w-12 text-center">
-                    <input 
-                      type="checkbox"
-                      checked={assets.length > 0 && assets.every(a => selectedIds.includes(a.id))}
-                      onChange={() => handleToggleSelectAll(assets)}
-                      className="rounded border-border-peach text-primary focus:ring-primary w-4 h-4"
-                    />
-                  </th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Foto</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Nama Aset</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">No. Aset</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Unit</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Lokasi</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Kondisi</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Status</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-peach/50">
-                {assets.map((asset) => {
-                  const locationName = mockLocations.find(l => l.id === asset.location_id)?.name || "-";
-                  const unitName = mockUnits.find(u => u.id === asset.unit_id)?.name || "-";
-                  return (
-                    <tr key={asset.id} className="hover:bg-primary-light/10 transition-colors">
-                      <td className="p-5 text-center">
-                        <input 
-                          type="checkbox"
-                          checked={selectedIds.includes(asset.id)}
-                          onChange={() => handleToggleSelectRow(asset.id)}
-                          className="rounded border-border-peach text-primary focus:ring-primary w-4 h-4"
-                        />
-                      </td>
-                      <td className="p-5">
-                        <div className="w-10 h-10 rounded-full bg-border-peach flex items-center justify-center font-bold text-xs text-primary font-serif">
-                          {asset.name.substring(0, 2).toUpperCase()}
-                        </div>
-                      </td>
-                      <td className="p-5">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-extrabold text-foreground">{asset.name}</span>
-                          <span className="text-[10px] text-foreground/45 font-bold">{asset.brand}</span>
-                        </div>
-                      </td>
-                      <td className="p-5 text-xs font-bold text-primary">{asset.entries_number}</td>
-                      <td className="p-5 text-xs font-semibold text-foreground/60">{unitName}</td>
-                      <td className="p-5 text-xs font-semibold text-foreground/60">{locationName}</td>
-                      <td className="p-5 text-xs font-bold">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          asset.condition === "bagus" 
-                            ? "bg-secondary-light text-secondary border border-secondary/20"
-                            : "bg-red-50 text-red-500 border border-red-100"
-                        }`}>
-                          {asset.condition === "bagus" ? "Bagus" : "Rusak"}
-                        </span>
-                      </td>
-                      <td className="p-5 text-xs font-semibold">
-                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold ${
-                          asset.status === "active" 
-                            ? "bg-emerald-100 text-emerald-800" 
-                            : asset.status === "repaired" 
-                            ? "bg-amber-100 text-amber-800" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {asset.status === "active" ? "Aktif" : asset.status === "repaired" ? "Diperbaiki" : "Tidak Aktif"}
-                        </span>
-                      </td>
-                      <td className="p-5 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button 
-                            onClick={() => setViewModal(asset)}
-                            className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-primary transition-colors shadow-sm"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => setEditModal(asset)}
-                            className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-primary transition-colors shadow-sm"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteAsset(asset.id)}
-                            className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-red-500 transition-colors shadow-sm"
-                          >
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {assets.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-xs font-semibold text-foreground/40">
-                      Tidak ada aset ditemukan.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            perPage={perPage}
-            onPageChange={setCurrentPage}
-            onPerPageChange={setPerPage}
-          />
-        </section>
+        {/* Filters and Search Bar */}
+        <Card className="rounded-3xl shadow-sm">
+          <CardContent className="p-5 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                <Input 
+                  type="text" 
+                  placeholder="Cari nama aset, brand, nomor urut..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9 h-11 rounded-2xl text-xs bg-card w-full"
+                />
+              </div>
 
-        {/* Floating Bulk Action Drawer */}
+              <Button 
+                variant={filterOpen ? "primaryLight" : "outline"}
+                onClick={() => setFilterOpen(!filterOpen)}
+                className="gap-2 rounded-2xl h-11 px-5 text-xs font-bold w-full sm:w-auto shrink-0"
+              >
+                <Filter className="w-4 h-4" />
+                <span>{filterOpen ? "Tutup Filter" : "Filter Lanjutan"}</span>
+              </Button>
+            </div>
+
+            {/* Collapsible Filter Forms */}
+            {filterOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border animate-in fade-in duration-200">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[10px]">Kondisi</Label>
+                  <select 
+                    value={filterCondition} 
+                    onChange={(e) => handleFilterChange(setFilterCondition, e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="all">Semua Kondisi</option>
+                    <option value="bagus">Bagus</option>
+                    <option value="rusak">Rusak</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[10px]">Status</Label>
+                  <select 
+                    value={filterStatus} 
+                    onChange={(e) => handleFilterChange(setFilterStatus, e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Tidak Aktif</option>
+                    <option value="repaired">Diperbaiki</option>
+                    <option value="transferred">Ditransfer</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[10px]">Kategori</Label>
+                  <select 
+                    value={filterCategory} 
+                    onChange={(e) => handleFilterChange(setFilterCategory, e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="all">Semua Kategori</option>
+                    {mockCategories.map(c => (
+                      <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-[10px]">Lokasi Ruangan</Label>
+                  <select 
+                    value={filterLocation} 
+                    onChange={(e) => handleFilterChange(setFilterLocation, e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="all">Semua Lokasi</option>
+                    {mockLocations.map(l => (
+                      <option key={l.id} value={l.id.toString()}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Bulk Action Sticky Bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-foreground text-white px-6 py-4 rounded-2xl flex items-center justify-between gap-6 shadow-2xl z-40 border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-300 w-[90%] max-w-3xl">
-            <span className="text-xs font-black">{selectedIds.length} Aset Terpilih</span>
-            <div className="flex gap-2 flex-wrap justify-end">
-              <button 
-                onClick={() => setQrCodePrintModal(true)}
-                className="px-3.5 py-2 bg-secondary hover:bg-secondary-hover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Cetak Label QR</span>
-              </button>
-              <button 
+          <div className="p-4 bg-primary-light border border-primary/20 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs font-black px-3 py-1">
+                {selectedIds.length} Aset Terpilih
+              </Badge>
+              <span className="text-xs text-muted-foreground font-semibold">Aksi massal:</span>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                size="sm"
+                variant="outline"
                 onClick={() => setBulkUnitLocationModal(true)}
-                className="px-3.5 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                className="rounded-xl gap-1.5 bg-card"
               >
-                <Settings2 className="w-4 h-4" />
-                <span>Ubah Unit & Lokasi</span>
-              </button>
-              <button 
+                <Settings2 className="w-3.5 h-3.5" />
+                <span>Pindah Unit & Lokasi</span>
+              </Button>
+              <Button 
+                size="sm"
+                variant="outline"
                 onClick={() => setBulkPhotoModal(true)}
-                className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-white/5"
+                className="rounded-xl gap-1.5 bg-card"
               >
-                <Camera className="w-4 h-4" />
-                <span>Tambah Foto</span>
-              </button>
-              <button 
-                onClick={() => setSelectedIds([])}
-                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-all"
-                title="Batal Pilih"
+                <Camera className="w-3.5 h-3.5" />
+                <span>Pasang Foto Massal</span>
+              </Button>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => setQrCodePrintModal(true)}
+                className="rounded-xl gap-1.5 bg-card text-sky-600 border-sky-200"
               >
-                <X className="w-4 h-4" />
-              </button>
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Cetak QR ({selectedIds.length})</span>
+              </Button>
+              <Button 
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  toast.confirm(`Yakin hapus ${selectedIds.length} aset terpilih?`, async () => {
+                    try {
+                      await api.post("/assets/bulk-delete", { ids: selectedIds });
+                      setSelectedIds([]);
+                      toast.success("Aset terpilih berhasil dihapus!");
+                      fetchAllData();
+                    } catch (err: any) {
+                      toast.error(err.message || "Gagal menghapus aset massal");
+                    }
+                  });
+                }}
+                className="rounded-xl gap-1.5"
+              >
+                <Trash className="w-3.5 h-3.5" />
+                <span>Hapus Terpilih</span>
+              </Button>
             </div>
           </div>
         )}
 
+        {/* Primary Assets Table */}
+        <Card className="rounded-3xl shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12 text-center">
+                    <Checkbox
+                      checked={assets.length > 0 && assets.every(a => selectedIds.includes(a.id))}
+                      onCheckedChange={() => handleToggleSelectAll(assets)}
+                    />
+                  </TableHead>
+                  <TableHead>Nama Aset & Kode</TableHead>
+                  <TableHead>Unit & Lokasi</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Kondisi</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Nilai Buku (Rp)</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <span className="text-xs font-bold">Memuat data aset inventaris...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : assets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Boxes className="w-10 h-10 opacity-30" />
+                        <span className="text-xs font-bold">Tidak ada aset ditemukan sesuai kriteria.</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  assets.map((asset) => {
+                    const isSelected = selectedIds.includes(asset.id);
+                    return (
+                      <TableRow 
+                        key={asset.id} 
+                        data-state={isSelected ? "selected" : undefined}
+                      >
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleSelectRow(asset.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-foreground">{asset.name}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground font-mono">
+                              #{asset.entries_number} &bull; {asset.brand || "Tanpa Merk"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-foreground">{asset.unit?.name || "—"}</span>
+                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
+                              {asset.location?.name || "—"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] font-bold bg-muted/60">
+                            {asset.category?.name || "Umum"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={asset.condition === "bagus" ? "success" : "destructive"} 
+                            className="text-[10px] font-bold uppercase"
+                          >
+                            {asset.condition === "bagus" ? "Bagus" : "Rusak"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              asset.status === "active" 
+                                ? "success" 
+                                : asset.status === "repaired" 
+                                ? "warning" 
+                                : asset.status === "transferred"
+                                ? "info"
+                                : "destructive"
+                            } 
+                            className="text-[10px] font-bold uppercase"
+                          >
+                            {asset.status === "active" ? "Aktif" : asset.status === "repaired" ? "Diperbaiki" : asset.status === "transferred" ? "Ditransfer" : "Tidak Aktif"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-bold text-foreground">
+                          Rp {(asset.book_value !== undefined ? asset.book_value : asset.price)?.toLocaleString("id-ID") || 0}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => setViewModal(asset)}
+                              className="h-8 w-8 rounded-lg hover:text-primary hover:bg-muted"
+                              title="Lihat Detail & QR"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => setEditModal(asset)}
+                              className="h-8 w-8 rounded-lg hover:text-primary hover:bg-muted"
+                              title="Ubah Aset"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteAsset(asset.id)}
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="Hapus Aset"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              perPage={perPage}
+              onPageChange={setCurrentPage}
+              onPerPageChange={setPerPage}
+            />
+          </CardContent>
+        </Card>
+
       </main>
 
-      {/* Create Modal Form (Matching Sections from AssetResource.php) */}
-      {createModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-4xl max-h-[85vh] p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200 overflow-y-auto">
-            <button 
-              onClick={() => setCreateModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-lg font-extrabold text-foreground font-serif border-b border-border-peach/50 pb-2 flex items-center gap-2">
-              <Boxes className="w-5 h-5 text-primary" />
-              <span>Registrasi Aset Baru</span>
-            </h3>
-            
-            <form onSubmit={handleCreateSubmit} className="flex flex-col gap-6">
-              
-              {/* Section 1: Informasi Aset */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">1. Informasi Aset</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="flex flex-col gap-1 md:col-span-2">
-                    <label className="text-xs font-bold text-foreground/75">Nama Aset</label>
-                    <input 
-                      type="text" 
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Contoh: PC Lenovo ThinkCentre M70s..." 
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Nomor Urut (Max 1000)</label>
-                    <input 
-                      type="number" 
-                      min={1}
-                      max={1000}
-                      value={formData.entries_number}
-                      onChange={(e) => setFormData({ ...formData, entries_number: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Merk</label>
-                    <input 
-                      type="text" 
-                      value={formData.brand}
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                      placeholder="Contoh: Lenovo" 
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 md:col-span-4">
-                    <label className="text-xs font-bold text-foreground/75">Deskripsi</label>
-                    <textarea 
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Jelaskan spesifikasi, nomor seri, atau detail fisik aset..."
-                      rows={2}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                </div>
+      {/* Create Asset Dialog */}
+      <Dialog open={createModal} onOpenChange={setCreateModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] rounded-3xl p-6 overflow-hidden flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Tambah Data Aset</DialogTitle>
+            <DialogDescription className="text-xs">
+              Isi data inventaris baru secara lengkap sesuai unit, lokasi, dan klasifikasi aktiva.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label htmlFor="add-name">Nama Aset</Label>
+                <Input 
+                  id="add-name"
+                  type="text" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Contoh: Laptop Lenovo ThinkPad L13" 
+                  required
+                />
               </div>
 
-              {/* Section 2: Status & Kondisi */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">2. Status & Kondisi</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Status</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="active">Aktif</option>
-                      <option value="inactive">Tidak Aktif</option>
-                      <option value="deleted">Dihapus</option>
-                      <option value="repaired">Diperbaiki</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Kondisi</label>
-                    <select
-                      value={formData.condition}
-                      onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="bagus">Bagus</option>
-                      <option value="rusak">Rusak</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Portability (Tipe)</label>
-                    <select
-                      value={formData.portability}
-                      onChange={(e) => setFormData({ ...formData, portability: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="portable">Portable</option>
-                      <option value="fixtures">Fixtures</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Informasi Perolehan */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">3. Informasi Perolehan</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Harga Perolehan (Rp)</label>
-                    <input 
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="Contoh: 12500000"
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Pemilik / Sumber Dana</label>
-                    <input 
-                      type="text"
-                      value={formData.aquisition}
-                      onChange={(e) => setFormData({ ...formData, aquisition: e.target.value })}
-                      placeholder="Contoh: Dana BOS atau Yayasan"
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Tanggal Perolehan</label>
-                    <input 
-                      type="date"
-                      value={formData.aquisition_date}
-                      onChange={(e) => setFormData({ ...formData, aquisition_date: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4: Lokasi & Kategori Relasi */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">4. Klasifikasi & Relasi Master</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Unit Kerja</label>
-                    <select
-                      value={formData.unit_id}
-                      onChange={(e) => setFormData({ ...formData, unit_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockUnits.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Lokasi Ruangan</label>
-                    <select
-                      value={formData.location_id}
-                      onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockLocations.map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Template Barang</label>
-                    <select
-                      value={formData.tool_id}
-                      onChange={(e) => setFormData({ ...formData, tool_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockTools.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.code_name})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Kategori</label>
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockCategories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Tahun Pengadaan</label>
-                    <select
-                      value={formData.year_id}
-                      onChange={(e) => setFormData({ ...formData, year_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockYears.map(y => (
-                        <option key={y.id} value={y.id}>{y.year}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Klasifikasi Aktiva</label>
-                    <select
-                      value={formData.aktiva_id}
-                      onChange={(e) => setFormData({ ...formData, aktiva_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockAktiva.map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 5: Foto Aset */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">5. Foto Aset</h4>
-                <div className="border-2 border-dashed border-border-peach hover:border-primary rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer bg-background/50">
-                  <Camera className="w-8 h-8 text-foreground/30" />
-                  <span className="text-xs font-bold text-foreground/50">Simulasi File Upload</span>
-                  <span className="text-[10px] text-foreground/40">Format Gambar JPG/PNG</span>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border-peach/50 mt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setCreateModal(false)}
-                  className="px-6 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-bold hover:bg-primary-light/40"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover shadow-sm"
-                >
-                  Simpan Asset
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal Form */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-4xl max-h-[85vh] p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200 overflow-y-auto">
-            <button 
-              onClick={() => setEditModal(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-lg font-extrabold text-foreground font-serif border-b border-border-peach/50 pb-2 flex items-center gap-2">
-              <Edit className="w-5 h-5 text-primary" />
-              <span>Ubah Data Aset</span>
-            </h3>
-            
-            <form onSubmit={handleEditSubmit} className="flex flex-col gap-6">
-              
-              {/* Section 1: Informasi Aset */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">1. Informasi Aset</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="flex flex-col gap-1 md:col-span-2">
-                    <label className="text-xs font-bold text-foreground/75">Nama Aset</label>
-                    <input 
-                      type="text" 
-                      value={editModal.name}
-                      onChange={(e) => setEditModal({ ...editModal, name: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Nomor Urut</label>
-                    <input 
-                      type="number" 
-                      min={1}
-                      max={1000}
-                      value={editModal.entries_number}
-                      onChange={(e) => setEditModal({ ...editModal, entries_number: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Merk</label>
-                    <input 
-                      type="text" 
-                      value={editModal.brand}
-                      onChange={(e) => setEditModal({ ...editModal, brand: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 md:col-span-4">
-                    <label className="text-xs font-bold text-foreground/75">Deskripsi</label>
-                    <textarea 
-                      value={editModal.description}
-                      onChange={(e) => setEditModal({ ...editModal, description: e.target.value })}
-                      rows={2}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Status & Kondisi */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">2. Status & Kondisi</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Status</label>
-                    <select
-                      value={editModal.status}
-                      onChange={(e) => setEditModal({ ...editModal, status: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="active">Aktif</option>
-                      <option value="inactive">Tidak Aktif</option>
-                      <option value="deleted">Dihapus</option>
-                      <option value="repaired">Diperbaiki</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Kondisi</label>
-                    <select
-                      value={editModal.condition}
-                      onChange={(e) => setEditModal({ ...editModal, condition: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="bagus">Bagus</option>
-                      <option value="rusak">Rusak</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Portability</label>
-                    <select
-                      value={editModal.portability}
-                      onChange={(e) => setEditModal({ ...editModal, portability: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      <option value="portable">Portable</option>
-                      <option value="fixtures">Fixtures</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Informasi Perolehan */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">3. Informasi Perolehan</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Harga Perolehan (Rp)</label>
-                    <input 
-                      type="number"
-                      value={editModal.price}
-                      onChange={(e) => setEditModal({ ...editModal, price: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Pemilik / Sumber Dana</label>
-                    <input 
-                      type="text"
-                      value={editModal.aquisition}
-                      onChange={(e) => setEditModal({ ...editModal, aquisition: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Tanggal Perolehan</label>
-                    <input 
-                      type="date"
-                      value={editModal.aquisition_date}
-                      onChange={(e) => setEditModal({ ...editModal, aquisition_date: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4: Klasifikasi */}
-              <div className="border border-border-peach/60 rounded-2xl p-4 flex flex-col gap-4">
-                <h4 className="text-xs font-black text-primary uppercase tracking-wider">4. Klasifikasi & Relasi Master</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Unit Kerja</label>
-                    <select
-                      value={editModal.unit_id}
-                      onChange={(e) => setEditModal({ ...editModal, unit_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockUnits.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Lokasi Ruangan</label>
-                    <select
-                      value={editModal.location_id}
-                      onChange={(e) => setEditModal({ ...editModal, location_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockLocations.map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Template Barang</label>
-                    <select
-                      value={editModal.tool_id}
-                      onChange={(e) => setEditModal({ ...editModal, tool_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockTools.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.code_name})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Kategori</label>
-                    <select
-                      value={editModal.category_id}
-                      onChange={(e) => setEditModal({ ...editModal, category_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockCategories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Tahun Pengadaan</label>
-                    <select
-                      value={editModal.year_id}
-                      onChange={(e) => setEditModal({ ...editModal, year_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockYears.map(y => (
-                        <option key={y.id} value={y.id}>{y.year}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-foreground/75">Klasifikasi Aktiva</label>
-                    <select
-                      value={editModal.aktiva_id}
-                      onChange={(e) => setEditModal({ ...editModal, aktiva_id: e.target.value })}
-                      className="px-3 py-2 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                      required
-                    >
-                      {mockAktiva.map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border-peach/50 mt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setEditModal(null)}
-                  className="px-6 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-bold hover:bg-primary-light/40"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover shadow-sm"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Infolist Detail View Modal (Matching Infolist from AssetResource.php) */}
-      {viewModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-3xl max-h-[85vh] p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200 overflow-y-auto">
-            <button 
-              onClick={() => setViewModal(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            
-            <div className="flex gap-4 items-start border-b border-border-peach/50 pb-4">
-              <div className="w-16 h-16 rounded-full bg-primary-light text-primary flex items-center justify-center font-bold text-lg font-serif flex-shrink-0">
-                {viewModal.name.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-extrabold text-foreground font-serif leading-none">{viewModal.name}</h3>
-                  <span className="text-[10px] font-bold text-white bg-primary px-2.5 py-0.5 rounded-full">No. Aset: {viewModal.entries_number}</span>
-                </div>
-                <p className="text-xs text-foreground/50 font-semibold mt-1.5">
-                  Merk: {viewModal.brand} &bull; Tipe: <span className="capitalize">{viewModal.portability}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Section 1 */}
-              <div className="flex flex-col gap-4">
-                <div>
-                  <h4 className="text-[10px] font-black text-primary uppercase tracking-wider mb-2">Informasi Status & Kondisi</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-zinc-50 border border-border-peach/40 rounded-xl">
-                      <span className="text-[9px] text-foreground/45 font-bold uppercase">Kondisi Fisik</span>
-                      <p className="text-xs font-black text-foreground capitalize mt-0.5">
-                        {viewModal.condition === "bagus" ? "✅ Bagus" : "❌ Rusak"}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-zinc-50 border border-border-peach/40 rounded-xl">
-                      <span className="text-[9px] text-foreground/45 font-bold uppercase">Status Aset</span>
-                      <p className="text-xs font-black text-foreground capitalize mt-0.5">
-                        {viewModal.status === "active" ? "Aktif" : viewModal.status === "repaired" ? "Diperbaiki" : "Tidak Aktif"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-[10px] font-black text-primary uppercase tracking-wider mb-2">Informasi Finansial & Perolehan</h4>
-                  <div className="p-4 bg-zinc-50 border border-border-peach/40 rounded-xl flex flex-col gap-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-foreground/50 font-semibold">Harga Perolehan:</span>
-                      <span className="font-extrabold text-foreground">Rp {viewModal.price.toLocaleString("id-ID")}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-foreground/50 font-semibold">Sumber Dana / Pemilik:</span>
-                      <span className="font-bold text-foreground">{viewModal.aquisition}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-foreground/50 font-semibold">Tanggal Perolehan:</span>
-                      <span className="font-bold text-foreground">{viewModal.aquisition_date}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2 */}
-              <div className="flex flex-col gap-4">
-                <div>
-                  <h4 className="text-[10px] font-black text-primary uppercase tracking-wider mb-2">Klasifikasi Ruangan & Master</h4>
-                  <div className="p-4 bg-zinc-50 border border-border-peach/40 rounded-xl flex flex-col gap-2.5">
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <Building className="w-4 h-4 text-primary" />
-                      <span><strong>Unit:</strong> {mockUnits.find(u => u.id === viewModal.unit_id)?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <MapPin className="w-4 h-4 text-emerald-500" />
-                      <span><strong>Lokasi:</strong> {mockLocations.find(l => l.id === viewModal.location_id)?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <Tag className="w-4 h-4 text-orange-400" />
-                      <span><strong>Kategori:</strong> {mockCategories.find(c => c.id === viewModal.category_id)?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <Wrench className="w-4 h-4 text-indigo-400" />
-                      <span><strong>Jenis Barang:</strong> {mockTools.find(t => t.id === viewModal.tool_id)?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <FileText className="w-4 h-4 text-amber-500" />
-                      <span><strong>Aktiva:</strong> {mockAktiva.find(a => a.id === viewModal.aktiva_id)?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2.5 text-xs text-foreground/75 font-semibold">
-                      <Calendar className="w-4 h-4 text-blue-400" />
-                      <span><strong>Tahun:</strong> {mockYears.find(y => y.id === viewModal.year_id)?.year}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-border-peach/50 pt-4">
-              <span className="text-[10px] font-bold text-foreground/40 uppercase">Deskripsi / Detail Fisik</span>
-              <p className="text-xs font-semibold text-foreground/75 leading-relaxed bg-zinc-50 p-3 rounded-xl border border-border-peach/30">
-                {viewModal.description}
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-3 flex-shrink-0 mt-4">
-              <button 
-                onClick={() => setViewModal(null)}
-                className="px-6 py-2.5 bg-background border border-border-peach text-foreground/75 hover:text-primary rounded-xl font-bold text-xs transition-colors"
-              >
-                Tutup Detail Aset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Change Unit & Location Modal */}
-      {bulkUnitLocationModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setBulkUnitLocationModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Ubah Unit & Lokasi Massal</h3>
-              <p className="text-[10px] text-foreground/45 mt-1">Ubah unit kerja dan lokasi penempatan untuk {selectedIds.length} aset sekaligus.</p>
-            </div>
-
-            <form onSubmit={handleExecuteBulkUnitLocation} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-foreground/70">Unit Baru</label>
+                <Label htmlFor="add-brand">Merk / Brand</Label>
+                <Input 
+                  id="add-brand"
+                  type="text" 
+                  value={formData.brand} 
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  placeholder="Contoh: Lenovo / Epson" 
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="add-unit">Unit Kerja</Label>
+                  {isUnitRole && <span className="text-[9px] font-bold text-primary">(Terkunci)</span>}
+                </div>
                 <select 
-                  value={bulkUnit}
-                  onChange={(e) => setBulkUnit(e.target.value)}
-                  className="px-4 py-3 bg-background border border-border-peach rounded-2xl text-xs font-semibold text-foreground focus:outline-none"
+                  id="add-unit"
+                  value={formData.unit_id} 
+                  disabled={isUnitRole}
+                  onChange={(e) => {
+                    const newUnit = e.target.value;
+                    const matchedLocs = mockLocations.filter(l => String(l.unit_id) === newUnit);
+                    setFormData({ 
+                      ...formData, 
+                      unit_id: newUnit,
+                      location_id: String(matchedLocs[0]?.id || mockLocations[0]?.id || "1")
+                    });
+                  }}
+                  className={`flex h-10 w-full rounded-xl border border-input px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${isUnitRole ? "bg-muted/60 opacity-80 cursor-not-allowed" : "bg-card"}`}
                   required
                 >
-                  <option value="">Pilih Unit...</option>
                   {mockUnits.map(u => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
@@ -1351,185 +964,707 @@ export default function AssetsPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-foreground/70">Lokasi Baru</label>
+                <Label htmlFor="add-loc">Lokasi / Ruangan</Label>
                 <select 
-                  value={bulkLocation}
-                  onChange={(e) => setBulkLocation(e.target.value)}
-                  disabled={!bulkUnit}
-                  className="px-4 py-3 bg-background border border-border-peach rounded-2xl text-xs font-semibold text-foreground focus:outline-none disabled:opacity-50"
+                  id="add-loc"
+                  value={formData.location_id} 
+                  onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   required
                 >
-                  <option value="">Pilih Lokasi...</option>
-                  {mockLocations.filter(l => l.unit_id === Number(bulkUnit)).map(l => (
+                  {mockLocations.filter(l => !formData.unit_id || String(l.unit_id) === String(formData.unit_id)).map(l => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex gap-2 justify-end pt-3 border-t border-border-peach/50 mt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setBulkUnitLocationModal(false)}
-                  className="px-4 py-2 bg-background border border-border-peach rounded-xl text-xs font-bold"
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-category">Kategori</Label>
+                <select 
+                  id="add-category"
+                  value={formData.category_id} 
+                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
                 >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover shadow-sm"
-                >
-                  Simpan Perubahan
-                </button>
+                  {mockCategories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Printable QR Code Labels Modal (Styled exactly like qrcode.blade.php) */}
-      {qrCodePrintModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-5xl max-h-[90vh] p-6 shadow-2xl flex flex-col gap-6 relative overflow-hidden animate-in fade-in zoom-in duration-300">
-            <button 
-              onClick={() => setQrCodePrintModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors print:hidden"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex justify-between items-center border-b border-border-peach/50 pb-4 print:hidden">
-              <div>
-                <h3 className="text-base font-extrabold text-foreground font-serif">Preview Cetak Barcode QR Code</h3>
-                <p className="text-[10px] text-foreground/45 mt-0.5">Desain label asset 180x110px sesuai standar sekolah YAPI</p>
-              </div>
-              <button 
-                onClick={() => window.print()}
-                className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs shadow-md shadow-primary/10 transition-colors"
-              >
-                Cetak Halaman (Print)
-              </button>
             </div>
 
-            {/* Printable Grid Area */}
-            <div className="flex-1 overflow-y-auto p-4 bg-zinc-50 border border-border-peach/50 rounded-2xl print:bg-white print:border-none print:p-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 justify-items-center print:grid-cols-3 print:gap-4 print:p-0">
-                {loadingSelectedDetails ? (
-                  <div className="col-span-full flex flex-col items-center justify-center p-12 text-foreground/50 gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <span className="text-xs font-bold">Memuat data barcode...</span>
-                  </div>
-                ) : (
-                  selectedAssetsDetails.map(item => {
-                    const unitCode = mockUnits.find(u => u.id === item.unit_id)?.number || "--";
-                    const locationCode = mockLocations.find(l => l.id === item.location_id)?.number || "--";
-                    const categoryCode = mockCategories.find(c => c.id === item.category_id)?.code || "--";
-                    const toolCode = mockTools.find(t => t.id === item.tool_id)?.code_name || "--";
-                    const yearCode = mockYears.find(y => y.id === item.year_id)?.code || "--";
-                    const aktivaCode = mockAktiva.find(a => a.id === item.aktiva_id)?.code || "--";
-                    
-                    // Label code string
-                    const labelCode = `${unitCode}/${aktivaCode}/${locationCode}/${toolCode}/${categoryCode}/${yearCode}/${item.entries_number}`;
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-tool">Alat / Barang</Label>
+                <select 
+                  id="add-tool"
+                  value={formData.tool_id} 
+                  onChange={(e) => setFormData({ ...formData, tool_id: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  {mockTools.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                    return (
-                      <div 
-                        key={item.id} 
-                        className="bg-white" 
-                        style={{ 
-                          width: "180px", 
-                          height: "110px", 
-                          display: "flex", 
-                          flexDirection: "column", 
-                          alignItems: "center", 
-                          justifyContent: "center", 
-                          border: "1px solid black",
-                          padding: "5px",
-                          boxSizing: "border-box"
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "4px" }}>
-                          {/* Mocking QR code graphic with inline HTML structure matching Filament qrcode.js green output */}
-                          <div style={{ width: "60px", height: "60px", border: "1px solid #e2e8f0", padding: "2px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                            <div className="w-full h-full bg-[#048025]/5 p-0.5 flex flex-wrap gap-0.5 justify-center items-center">
-                              {/* SVG QR Code Pattern mockup */}
-                              <svg width="45" height="45" viewBox="0 0 29 29" className="text-[#048025]">
-                                <path fill="currentColor" d="M0 0h7v7H0zm1 1v5h5V1zm21 0h7v7h-7zm1 1v5h5V1zM0 22h7v7H0zm1 1v5h5V23zm10-22h7v2h-7zm0 3h2v4h-2zm4 0h3v1h-3zm0 2h1v2h-1zm5 0h1v1h-1zm-9 3h2v2h-2zm6 0h2v1h-2zm-3 2h2v2h-2zm6 0h1v1h-1zm-9 3h3v1h-3zm5 0h2v2h-2zm4 0h2v1h-2zm-9 2h2v2h-2zm3 0h1v1h-1zm5 0h2v2h-2zm-6 2h3v1h-3zm6 0h1v1h-1z" />
-                                <rect x="3" y="3" width="1" height="1" fill="currentColor" />
-                                <rect x="25" y="3" width="1" height="1" fill="currentColor" />
-                                <rect x="3" y="25" width="1" height="1" fill="currentColor" />
-                              </svg>
-                            </div>
-                          </div>
-                          
-                          {/* School YAPI circular emblem badge logo */}
-                          <div className="w-14 h-14 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-[8px] border-2 border-amber-400 leading-none text-center shadow">
-                            <span>YAPI<br />SCHOOL</span>
-                          </div>
-                        </div>
-                        <div className="text-center font-bold font-mono" style={{ fontSize: "7.5px", letterSpacing: "-0.2px", lineHeight: "1.2", overflowWrap: "anywhere", wordBreak: "break-all" }}>
-                          {labelCode}
-                        </div>
-                      </div>
-                    );
-                  })
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-year">Tahun Pengadaan</Label>
+                <select 
+                  id="add-year"
+                  value={formData.year_id} 
+                  onChange={(e) => setFormData({ ...formData, year_id: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  {mockYears.map(y => (
+                    <option key={y.id} value={y.id}>{y.year || y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-aktiva">Klasifikasi Aktiva</Label>
+                <select 
+                  id="add-aktiva"
+                  value={formData.aktiva_id} 
+                  onChange={(e) => setFormData({ ...formData, aktiva_id: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  {mockAktiva.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-condition">Kondisi</Label>
+                <select 
+                  id="add-condition"
+                  value={formData.condition} 
+                  onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  <option value="bagus">Bagus</option>
+                  <option value="rusak">Rusak</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-status">Status</Label>
+                <select 
+                  id="add-status"
+                  value={formData.status} 
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Tidak Aktif</option>
+                  <option value="repaired">Diperbaiki</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-portability">Tipe Portabilitas</Label>
+                <select 
+                  id="add-portability"
+                  value={formData.portability} 
+                  onChange={(e) => setFormData({ ...formData, portability: e.target.value })}
+                  className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  required
+                >
+                  <option value="portable">Portable</option>
+                  <option value="fixtures">Fixtures (Non-portable)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-price">Harga Perolehan (Rp)</Label>
+                <Input 
+                  id="add-price"
+                  type="number" 
+                  value={formData.price} 
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="Contoh: 15000000" 
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-depreciation">Penyusutan / Tahun (%)</Label>
+                <Input 
+                  id="add-depreciation"
+                  type="number" 
+                  value={formData.depreciation_rate} 
+                  onChange={(e) => setFormData({ ...formData, depreciation_rate: e.target.value })}
+                  placeholder="10 (default)" 
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-aquisition">Pemilik / Sumber Perolehan</Label>
+                <Input 
+                  id="add-aquisition"
+                  type="text" 
+                  value={formData.aquisition} 
+                  onChange={(e) => setFormData({ ...formData, aquisition: e.target.value })}
+                  placeholder="Contoh: YAPI / BOS / Hibah" 
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-date">Tanggal Perolehan</Label>
+                <Input 
+                  id="add-date"
+                  type="date" 
+                  value={formData.aquisition_date} 
+                  onChange={(e) => setFormData({ ...formData, aquisition_date: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-img">Upload Foto Aset (Opsional)</Label>
+                <Input 
+                  id="add-img"
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => setFormData({ ...formData, image_file: e.target.files?.[0] || null })}
+                  className="cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="add-desc">Deskripsi / Spesifikasi</Label>
+              <Textarea 
+                id="add-desc"
+                value={formData.description} 
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Catatan tambahan spesifikasi aset..."
+                rows={2}
+              />
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button type="submit" className="rounded-xl shadow-md shadow-primary/20">
+                Simpan Aset
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Asset Dialog */}
+      <Dialog open={!!editModal} onOpenChange={(open) => !open && setEditModal(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] rounded-3xl p-6 overflow-hidden flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Ubah Data Aset</DialogTitle>
+            <DialogDescription className="text-xs">
+              Perbarui detail informasi aset inventaris.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editModal && (
+            <form onSubmit={handleEditSubmit} className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                  <Label htmlFor="edit-name">Nama Aset</Label>
+                  <Input 
+                    id="edit-name"
+                    type="text" 
+                    value={editModal.name} 
+                    onChange={(e) => setEditModal({ ...editModal, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-brand">Merk / Brand</Label>
+                  <Input 
+                    id="edit-brand"
+                    type="text" 
+                    value={editModal.brand || ""} 
+                    onChange={(e) => setEditModal({ ...editModal, brand: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-unit">Unit Kerja</Label>
+                    {isUnitRole && <span className="text-[9px] font-bold text-primary">(Terkunci)</span>}
+                  </div>
+                  <select 
+                    id="edit-unit"
+                    value={editModal.unit_id} 
+                    disabled={isUnitRole}
+                    onChange={(e) => {
+                      const newUnit = Number(e.target.value);
+                      const matchedLocs = mockLocations.filter(l => Number(l.unit_id) === newUnit);
+                      setEditModal({ 
+                        ...editModal, 
+                        unit_id: newUnit,
+                        location_id: Number(matchedLocs[0]?.id || mockLocations[0]?.id || 1)
+                      });
+                    }}
+                    className={`flex h-10 w-full rounded-xl border border-input px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${isUnitRole ? "bg-muted/60 opacity-80 cursor-not-allowed" : "bg-card"}`}
+                    required
+                  >
+                    {mockUnits.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-loc">Lokasi / Ruangan</Label>
+                  <select 
+                    id="edit-loc"
+                    value={editModal.location_id} 
+                    onChange={(e) => setEditModal({ ...editModal, location_id: Number(e.target.value) })}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    required
+                  >
+                    {mockLocations.filter(l => !editModal.unit_id || Number(l.unit_id) === Number(editModal.unit_id)).map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-category">Kategori</Label>
+                  <select 
+                    id="edit-category"
+                    value={editModal.category_id} 
+                    onChange={(e) => setEditModal({ ...editModal, category_id: Number(e.target.value) })}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    required
+                  >
+                    {mockCategories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-condition">Kondisi</Label>
+                  <select 
+                    id="edit-condition"
+                    value={editModal.condition} 
+                    onChange={(e) => setEditModal({ ...editModal, condition: e.target.value })}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    required
+                  >
+                    <option value="bagus">Bagus</option>
+                    <option value="rusak">Rusak</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <select 
+                    id="edit-status"
+                    value={editModal.status} 
+                    onChange={(e) => setEditModal({ ...editModal, status: e.target.value })}
+                    className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    required
+                  >
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Tidak Aktif</option>
+                    <option value="repaired">Diperbaiki</option>
+                    <option value="transferred">Ditransfer</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-price">Harga Perolehan (Rp)</Label>
+                  <Input 
+                    id="edit-price"
+                    type="number" 
+                    value={editModal.price || 0} 
+                    onChange={(e) => setEditModal({ ...editModal, price: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-depreciation">Penyusutan / Tahun (%)</Label>
+                  <Input 
+                    id="edit-depreciation"
+                    type="number" 
+                    value={editModal.depreciation_rate !== undefined ? editModal.depreciation_rate : 10} 
+                    onChange={(e) => setEditModal({ ...editModal, depreciation_rate: Number(e.target.value) })}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-aquisition">Pemilik / Sumber Perolehan</Label>
+                  <Input 
+                    id="edit-aquisition"
+                    type="text" 
+                    value={editModal.aquisition || "YAPI"} 
+                    onChange={(e) => setEditModal({ ...editModal, aquisition: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-desc">Deskripsi</Label>
+                <Textarea 
+                  id="edit-desc"
+                  value={editModal.description || ""} 
+                  onChange={(e) => setEditModal({ ...editModal, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+
+              <DialogFooter className="mt-2">
+                <Button type="button" variant="outline" onClick={() => setEditModal(null)} className="rounded-xl">
+                  Batal
+                </Button>
+                <Button type="submit" className="rounded-xl shadow-md shadow-primary/20">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Rich View Detail Infolist Modal */}
+      <Dialog open={!!viewModal} onOpenChange={(open) => !open && setViewModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] rounded-3xl p-6 overflow-hidden flex flex-col gap-4">
+          {viewModal && (
+            <>
+              {/* Modal Top Header */}
+              <div className="flex gap-4 items-start pb-4 border-b border-border">
+                <div className="w-14 h-14 rounded-2xl bg-primary-light text-primary border border-primary/20 flex items-center justify-center shrink-0">
+                  <Boxes className="w-7 h-7" />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-extrabold text-foreground font-serif leading-tight">{viewModal.name}</h3>
+                    <Badge variant={viewModal.condition === "bagus" ? "success" : "destructive"} className="text-[10px] font-bold uppercase">
+                      {viewModal.condition === "bagus" ? "Bagus" : "Rusak"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                      {viewModal.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-mono font-bold mt-1">
+                    {viewModal.brand || "Tanpa Merk"} &bull; #{viewModal.entries_number}
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Scrollable Content */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+                
+                {/* Kode Lengkap & QR Code Preview */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/40 p-4 rounded-2xl border border-border">
+                  <div className="shrink-0 flex items-center justify-center">
+                    <AssetQrSticker asset={viewModal} size="compact" className="shadow-sm" />
+                  </div>
+                  <div className="flex flex-col gap-1 w-full text-center sm:text-left">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Format Kode Lengkap</span>
+                    <span className="text-xs font-mono font-bold text-primary bg-card px-3 py-1.5 rounded-xl border border-border break-all">
+                      {viewModal.full_code || `${viewModal.unit?.number || 'UNT'}/${viewModal.aktiva?.code || 'AKT'}/${viewModal.location?.number || 'LOC'}/${viewModal.tool?.code_name || 'BRG'}/${viewModal.category?.code || 'CAT'}/${viewModal.entries_number}`}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">Pindai QR untuk membuka halaman verifikasi publik aset ini.</span>
+                  </div>
+                </div>
+
+                {/* Lokasi & Klasifikasi Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/20 p-4 rounded-2xl border border-border">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Unit Kerja</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.unit?.name || "—"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Lokasi Ruangan</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.location?.name || "—"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Kategori</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.category?.name || "—"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Barang / Alat</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.tool?.name || "—"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Aktiva Tetap</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.aktiva?.name || "—"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Tahun Perolehan</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5">{viewModal.year?.year || "—"}</span>
+                  </div>
+                </div>
+
+                {/* Blok Penyusutan Aset (Depreciation) */}
+                <div className="flex flex-col gap-2 p-4 bg-muted/30 rounded-2xl border border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold font-serif text-foreground flex items-center gap-1.5">
+                      <TrendingDown className="w-4 h-4 text-primary" />
+                      <span>Kalkulasi Penyusutan & Nilai Buku</span>
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-bold">
+                      {viewModal.effective_depreciation_rate || 10}% / Tahun
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                    <div className="flex flex-col p-2.5 bg-card rounded-xl border border-border">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase">Harga Beli</span>
+                      <span className="text-xs font-bold text-foreground mt-0.5">Rp {viewModal.price?.toLocaleString("id-ID") || 0}</span>
+                    </div>
+                    <div className="flex flex-col p-2.5 bg-card rounded-xl border border-border">
+                      <span className="text-[9px] font-bold text-amber-600 uppercase">Akumulasi Susut</span>
+                      <span className="text-xs font-bold text-amber-600 mt-0.5">
+                        Rp {(viewModal.accumulated_depreciation || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col p-2.5 bg-card rounded-xl border border-border">
+                      <span className="text-[9px] font-bold text-emerald-600 uppercase">Nilai Buku Saat Ini</span>
+                      <span className="text-xs font-extrabold text-emerald-600 mt-0.5">
+                        Rp {(viewModal.book_value !== undefined ? viewModal.book_value : viewModal.price)?.toLocaleString("id-ID", { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sumber Perolehan & Tanggal */}
+                <div className="grid grid-cols-2 gap-3 bg-muted/10 p-3 rounded-2xl border border-border">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Sumber / Pemilik</span>
+                    <span className="text-xs font-semibold text-foreground mt-0.5">{viewModal.aquisition || "YAPI"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Tanggal Perolehan</span>
+                    <span className="text-xs font-semibold text-foreground mt-0.5">
+                      {viewModal.aquisition_date ? new Date(viewModal.aquisition_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {viewModal.description && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Deskripsi & Spesifikasi</span>
+                    <p className="text-xs text-foreground/80 bg-muted/20 p-3 rounded-xl border border-border leading-relaxed">
+                      {viewModal.description}
+                    </p>
+                  </div>
                 )}
               </div>
-            </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border-peach/50 print:hidden flex-shrink-0">
-              <button 
-                type="button" 
-                onClick={() => setQrCodePrintModal(false)}
-                className="px-6 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-bold hover:bg-primary-light/40"
+              <DialogFooter className="pt-2">
+                <Button variant="outline" onClick={() => setViewModal(null)} className="rounded-xl px-5">
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Unit & Location Modal */}
+      <Dialog open={bulkUnitLocationModal} onOpenChange={setBulkUnitLocationModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Pindah Unit & Lokasi Massal</DialogTitle>
+            <DialogDescription className="text-xs">
+              Ubah unit kerja dan lokasi ruangan untuk {selectedIds.length} aset terpilih sekaligus.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleExecuteBulkUnitLocation} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bulk-unit">Pilih Unit Baru</Label>
+              <select 
+                id="bulk-unit"
+                value={bulkUnit} 
+                onChange={(e) => {
+                  setBulkUnit(e.target.value);
+                  setBulkLocation("");
+                }}
+                className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                required
               >
-                Tutup Preview
-              </button>
+                <option value="">Pilih Unit...</option>
+                {mockUnits.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bulk-loc">Pilih Lokasi Baru</Label>
+              <select 
+                id="bulk-loc"
+                value={bulkLocation} 
+                onChange={(e) => setBulkLocation(e.target.value)}
+                className="flex h-10 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                required
+              >
+                <option value="">Pilih Lokasi...</option>
+                {mockLocations.filter(l => !bulkUnit || String(l.unit_id) === String(bulkUnit)).map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setBulkUnitLocationModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button type="submit" className="rounded-xl">
+                Simpan Perubahan Massal
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Photo Modal */}
+      <Dialog open={bulkPhotoModal} onOpenChange={setBulkPhotoModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Pasang Foto Massal</DialogTitle>
+            <DialogDescription className="text-xs">
+              Upload foto dokumentasi untuk {selectedIds.length} aset terpilih sekaligus.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleExecuteBulkPhoto} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bulk-photo-input">Pilih File Foto (JPG/PNG Max 2MB)</Label>
+              <Input 
+                id="bulk-photo-input"
+                type="file" 
+                accept="image/*"
+                onChange={(e) => setBulkPhotoFile(e.target.files?.[0] || null)}
+                className="cursor-pointer"
+                required
+              />
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setBulkPhotoModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button type="submit" className="rounded-xl">
+                Upload Foto ({selectedIds.length} Aset)
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Excel Modal */}
+      <Dialog open={importExcelModal} onOpenChange={setImportExcelModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Import Aset dari Excel</DialogTitle>
+            <DialogDescription className="text-xs">
+              Unggah file spreadsheet data aset dalam format .xlsx sesuai template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="p-3 bg-muted/40 rounded-xl border border-border text-xs flex flex-col gap-2">
+              <span className="font-bold text-foreground">Format Spreadsheet:</span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Pastikan file Anda menyertakan kolom: name, brand, condition, entries_number, price, unit_id, location_id, category_id, year_id, aktiva_id.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => toast.info("Mengunduh template sample-asset.xlsx...")} className="rounded-xl gap-1.5 w-fit text-xs">
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Contoh Format (.xlsx)</span>
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="import-excel-file">Pilih File Excel</Label>
+              <Input 
+                id="import-excel-file"
+                type="file" 
+                accept=".xlsx,.xls,.csv"
+                className="cursor-pointer"
+              />
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setImportExcelModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button onClick={() => { setImportExcelModal(false); toast.success("File Excel berhasil diunggah & diproses!"); }} className="rounded-xl">
+                Mulai Import Data
+              </Button>
+            </DialogFooter>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Bulk Upload Photo Modal */}
-      {bulkPhotoModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setBulkPhotoModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
+      {/* QR Code Print Modal */}
+      <Dialog open={qrCodePrintModal} onOpenChange={setQrCodePrintModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] rounded-3xl p-6 overflow-hidden flex flex-col gap-4 print:bg-white print:border-none print:w-full print:h-full print:max-h-full">
+          <div className="flex justify-between items-center border-b border-border pb-3 print:hidden shrink-0">
             <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Unggah Foto Massal</h3>
-              <p className="text-[10px] text-foreground/45 mt-1">Unggah file foto pendukung untuk {selectedIds.length} aset terpilih.</p>
+              <DialogTitle className="text-base font-extrabold font-serif">
+                Cetak Barcode QR Code ({selectedIds.length} Aset)
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground">Label barcode QR siap dicetak menggunakan printer stiker/A4.</p>
             </div>
-
-            <form onSubmit={(e) => { e.preventDefault(); alert("Foto massal diunggah!"); setSelectedIds([]); setBulkPhotoModal(false); }} className="flex flex-col gap-4">
-              <div className="border-2 border-dashed border-border-peach hover:border-primary rounded-2xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-background/50">
-                <Camera className="w-8 h-8 text-foreground/30" />
-                <span className="text-xs font-bold text-foreground/50">Klik untuk mencari file</span>
-                <span className="text-[9px] text-foreground/40 font-medium">Format JPG/PNG, maks 1MB</span>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-3 border-t border-border-peach/50 mt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setBulkPhotoModal(false)}
-                  className="px-4 py-2 bg-background border border-border-peach rounded-xl text-xs font-bold"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover shadow-sm"
-                >
-                  Unggah Foto Aset
-                </button>
-              </div>
-            </form>
+            <Button onClick={() => window.print()} className="rounded-xl">
+              Cetak Halaman (Print)
+            </Button>
           </div>
-        </div>
-      )}
+
+          <div className="flex-1 overflow-y-auto p-4 bg-muted/30 border border-border rounded-2xl print:bg-white print:border-none print:p-0">
+            {loadingSelectedDetails ? (
+              <div className="flex items-center justify-center p-12 gap-2 text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <span className="text-xs font-bold">Menyiapkan format label cetak...</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-4 justify-center print:gap-1.5 print:p-0">
+                {selectedAssetsDetails.map((item) => (
+                  <div key={item.id} className="no-break">
+                    <AssetQrSticker asset={item} size="compact" className="shadow-sm" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="print:hidden">
+            <Button variant="outline" onClick={() => setQrCodePrintModal(false)} className="rounded-xl">
+              Tutup Preview
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

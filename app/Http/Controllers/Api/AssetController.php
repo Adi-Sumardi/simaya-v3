@@ -13,6 +13,16 @@ class AssetController extends Controller
     {
         $query = Asset::with(['unit', 'location', 'tool', 'category', 'year', 'aktiva']);
 
+        // Scope to Unit if user has Unit role or non-super-admin with unit_id
+        $user = $request->user();
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        } else {
+            if ($request->filled('unit_id') && $request->input('unit_id') !== 'all') {
+                $query->where('unit_id', $request->input('unit_id'));
+            }
+        }
+
         // Search filter
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -46,8 +56,23 @@ class AssetController extends Controller
             $query->where('location_id', $request->input('location_id'));
         }
 
-        if ($request->filled('unit_id') && $request->input('unit_id') !== 'all') {
-            $query->where('unit_id', $request->input('unit_id'));
+        if ($request->filled('depreciation_status') && $request->input('depreciation_status') !== 'all') {
+            $status = $request->input('depreciation_status');
+            $effectiveRate = 'COALESCE(NULLIF(depreciation_rate, 0), ' . Asset::DEFAULT_DEPRECIATION_RATE . ')';
+            $usefulLifeMonths = "((100 / {$effectiveRate}) * 12)";
+            $monthsElapsed = 'TIMESTAMPDIFF(MONTH, aquisition_date, NOW())';
+            $hasData = "price IS NOT NULL AND price > 0 AND aquisition_date IS NOT NULL";
+            $rateNotZero = '(depreciation_rate IS NULL OR depreciation_rate <> 0)';
+
+            match ($status) {
+                'fully_depreciated' => $query->whereRaw("{$hasData} AND {$rateNotZero} AND {$monthsElapsed} >= {$usefulLifeMonths}"),
+                'depreciating' => $query->whereRaw("{$hasData} AND {$rateNotZero} AND {$monthsElapsed} < {$usefulLifeMonths}"),
+                'not_depreciating' => $query->whereRaw("{$hasData}")->where('depreciation_rate', 0),
+                'no_data' => $query->where(function ($q) {
+                    $q->whereNull('price')->orWhere('price', '<=', 0)->orWhereNull('aquisition_date');
+                }),
+                default => null,
+            };
         }
 
         if ($request->filled('ids')) {
@@ -66,11 +91,12 @@ class AssetController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'condition' => 'required|in:bagus,rusak',
-            'portability' => 'required|in:portable,non-portable',
+            'portability' => 'required|in:portable,fixtures,non-portable',
             'entries_number' => 'required|integer',
             'description' => 'nullable|string|max:555',
             'brand' => 'nullable|string|max:255',
             'price' => 'nullable|numeric|min:0',
+            'depreciation_rate' => 'nullable|numeric|min:0|max:100',
             'aquisition' => 'nullable|string|max:255',
             'aquisition_date' => 'nullable|date',
             'status' => 'required|in:active,inactive,deleted,repaired,transferred,disposed',
@@ -83,6 +109,13 @@ class AssetController extends Controller
             'image_file' => 'nullable|image|max:2048' // 2MB max
         ]);
 
+        $user = $request->user();
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $validated['unit_id'] = $user->unit_id;
+        }
+
+        $validated['user_id'] = $request->user()?->id ?? auth('sanctum')->id() ?? 1;
+
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('assets', 'public');
             $validated['image'] = $path;
@@ -93,7 +126,7 @@ class AssetController extends Controller
         return response()->json([
             'message' => 'Aset berhasil ditambahkan',
             'asset' => $asset->load(['unit', 'location', 'tool', 'category', 'year', 'aktiva'])
-        ], 21);
+        ], 201);
     }
 
     public function show($id)
@@ -105,15 +138,23 @@ class AssetController extends Controller
     public function update(Request $request, $id)
     {
         $asset = Asset::findOrFail($id);
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            if ($asset->unit_id !== $user->unit_id) {
+                return response()->json(['message' => 'Anda tidak memiliki akses untuk mengubah aset unit lain.'], 403);
+            }
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'condition' => 'required|in:bagus,rusak',
-            'portability' => 'required|in:portable,non-portable',
+            'portability' => 'required|in:portable,fixtures,non-portable',
             'entries_number' => 'required|integer',
             'description' => 'nullable|string|max:555',
             'brand' => 'nullable|string|max:255',
             'price' => 'nullable|numeric|min:0',
+            'depreciation_rate' => 'nullable|numeric|min:0|max:100',
             'aquisition' => 'nullable|string|max:255',
             'aquisition_date' => 'nullable|date',
             'status' => 'required|in:active,inactive,deleted,repaired,transferred,disposed',
@@ -125,6 +166,10 @@ class AssetController extends Controller
             'aktiva_id' => 'required|exists:aktivas,id',
             'image_file' => 'nullable|image|max:2048'
         ]);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $validated['unit_id'] = $user->unit_id;
+        }
 
         if ($request->hasFile('image_file')) {
             // Delete old image if it exists
@@ -143,9 +188,17 @@ class AssetController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $asset = Asset::findOrFail($id);
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            if ($asset->unit_id !== $user->unit_id) {
+                return response()->json(['message' => 'Anda tidak memiliki akses untuk menghapus aset unit lain.'], 403);
+            }
+        }
+
         $asset->delete();
 
         return response()->json([
@@ -162,7 +215,15 @@ class AssetController extends Controller
             'location_id' => 'required|exists:locations,id',
         ]);
 
-        Asset::whereIn('id', $validated['ids'])->update([
+        $user = $request->user();
+        $query = Asset::whereIn('id', $validated['ids']);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+            $validated['unit_id'] = $user->unit_id;
+        }
+
+        $query->update([
             'unit_id' => $validated['unit_id'],
             'location_id' => $validated['location_id']
         ]);
@@ -181,8 +242,14 @@ class AssetController extends Controller
         ]);
 
         $path = $request->file('image_file')->store('assets', 'public');
+        $user = $request->user();
+        $query = Asset::whereIn('id', $validated['ids']);
 
-        Asset::whereIn('id', $validated['ids'])->update([
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        }
+
+        $query->update([
             'image' => $path
         ]);
 
@@ -194,11 +261,16 @@ class AssetController extends Controller
 
     public function stats(Request $request)
     {
-        $unitId = $request->input('unit_id');
-
+        $user = $request->user();
         $query = Asset::query();
-        if ($unitId && $unitId !== 'all') {
-            $query->where('unit_id', $unitId);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        } else {
+            $unitId = $request->input('unit_id');
+            if ($unitId && $unitId !== 'all') {
+                $query->where('unit_id', $unitId);
+            }
         }
 
         $totalCount = (clone $query)->count();
@@ -227,6 +299,82 @@ class AssetController extends Controller
                 'inactive' => $statuses['inactive'] ?? 0,
                 'deleted' => $statuses['deleted'] ?? 0,
             ]
+        ]);
+    }
+
+    public function depreciationStats(Request $request)
+    {
+        $user = $request->user();
+        $query = Asset::query()->notTransferred();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        } else {
+            $unitId = $request->input('unit_id');
+            if ($unitId && $unitId !== 'all') {
+                $query->where('unit_id', $unitId);
+            }
+        }
+
+        $categoryId = $request->input('category_id');
+        if ($categoryId && $categoryId !== 'all') {
+            $query->where('category_id', $categoryId);
+        }
+
+        $assets = $query->get();
+
+        $totalPrice = 0;
+        $totalAccumulated = 0;
+        $totalBookValue = 0;
+        $counts = [
+            'fully_depreciated' => 0,
+            'depreciating' => 0,
+            'not_depreciating' => 0,
+            'no_data' => 0,
+        ];
+
+        foreach ($assets as $asset) {
+            $totalPrice += (float) ($asset->price ?? 0);
+            $totalAccumulated += (float) ($asset->accumulated_depreciation ?? 0);
+            $totalBookValue += (float) ($asset->book_value ?? 0);
+
+            $status = $asset->depreciation_status;
+            if (isset($counts[$status])) {
+                $counts[$status]++;
+            }
+        }
+
+        return response()->json([
+            'total_assets' => count($assets),
+            'total_price' => $totalPrice,
+            'total_accumulated_depreciation' => $totalAccumulated,
+            'total_book_value' => $totalBookValue,
+            'status_counts' => $counts,
+        ]);
+    }
+
+    public function publicDetail($id)
+    {
+        $asset = Asset::with(['unit', 'location', 'tool', 'category', 'year', 'aktiva', 'images'])
+            ->findOrFail($id);
+
+        return response()->json($asset);
+    }
+
+    public function publicLocationDetail($id)
+    {
+        $location = \App\Models\Location::with('unit')->findOrFail($id);
+        $assets = Asset::with(['unit', 'tool', 'category', 'year', 'aktiva'])
+            ->where('location_id', $id)
+            ->notTransferred()
+            ->get();
+
+        return response()->json([
+            'location' => $location,
+            'assets' => $assets,
+            'total_assets' => $assets->count(),
+            'good_count' => $assets->where('condition', 'bagus')->count(),
+            'damaged_count' => $assets->where('condition', 'rusak')->count(),
         ]);
     }
 }

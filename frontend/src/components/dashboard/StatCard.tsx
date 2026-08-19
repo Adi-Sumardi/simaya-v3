@@ -1,6 +1,8 @@
 "use client";
 
 import { LucideIcon } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface StatCardProps {
   title: string;
@@ -14,45 +16,47 @@ interface StatCardProps {
 }
 
 export default function StatCard({ title, value, subtext, icon: Icon, trend }: StatCardProps) {
-  const getTrendStyle = () => {
-    if (!trend) return "";
+  const getBadgeVariant = () => {
+    if (!trend) return "default";
     switch (trend.type) {
       case "positive":
-        return "bg-secondary-light text-secondary border border-secondary/20";
+        return "success";
       case "negative":
-        return "bg-red-50 text-red-500 border border-red-100";
+        return "destructive";
       default:
-        return "bg-primary-light text-primary border border-primary/20";
+        return "primaryLight";
     }
   };
 
   return (
-    <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card hover:shadow-lg transition-all duration-300 group">
-      <div className="flex items-start justify-between mb-4">
-        {/* Icon container with background glow */}
-        <div className="w-12 h-12 rounded-2xl bg-primary-light text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
-          <Icon className="w-6 h-6" />
+    <Card className="rounded-3xl hover:shadow-md hover:border-primary/40 transition-all duration-300 group">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          {/* Icon container */}
+          <div className="w-12 h-12 rounded-2xl bg-primary-light text-primary border border-primary/15 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <Icon className="w-6 h-6" />
+          </div>
+          
+          {/* Trend Badge */}
+          {trend && (
+            <Badge variant={getBadgeVariant() as any} className="text-[10px] sm:text-[11px] font-bold rounded-full px-2.5 py-0.5 text-right break-words max-w-[140px] truncate">
+              {trend.value}
+            </Badge>
+          )}
         </div>
-        
-        {/* Trend Indicator */}
-        {trend && (
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${getTrendStyle()}`}>
-            {trend.value}
-          </span>
-        )}
-      </div>
 
-      <div className="flex flex-col">
-        <span className="text-[13px] font-bold text-foreground/45 uppercase tracking-wider mb-1">
-          {title}
-        </span>
-        <span className="text-3xl font-extrabold text-foreground tracking-tight font-serif mb-1 group-hover:text-primary transition-colors">
-          {value}
-        </span>
-        <span className="text-xs text-foreground/50 font-medium">
-          {subtext}
-        </span>
-      </div>
-    </div>
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+            {title}
+          </span>
+          <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight font-serif mb-1 group-hover:text-primary transition-colors break-words">
+            {value}
+          </span>
+          <span className="text-xs text-muted-foreground font-medium break-words">
+            {subtext}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -3,32 +3,109 @@
 :root {
   --background: #FFFBF7;
   --foreground: #3C3935;
+
+  --card: #FFFFFF;
+  --card-foreground: #3C3935;
+  --card-shadow: 0 12px 40px -8px rgba(242, 122, 56, 0.08), 0 4px 16px -4px rgba(242, 122, 56, 0.04);
+
+  --popover: #FFFFFF;
+  --popover-foreground: #3C3935;
+
   --primary: #F27A38;
+  --primary-foreground: #FFFFFF;
   --primary-hover: #D96323;
   --primary-light: #FFF2EC;
+
   --secondary: #3CCF8E;
+  --secondary-foreground: #FFFFFF;
   --secondary-light: #E8FBF2;
+
+  --muted: #F7EFE8;
+  --muted-foreground: #7D756C;
+
   --accent: #FF9F5A;
+  --accent-foreground: #3C3935;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #FFDDD3;
   --border-peach: #FFDDD3;
-  --card: #FFFFFF;
-  --card-shadow: 0 12px 40px -8px rgba(242, 122, 56, 0.08), 0 4px 16px -4px rgba(242, 122, 56, 0.04);
+  --input: #FFDDD3;
+  --ring: #F27A38;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: #12141A;
+  --foreground: #F1F5F9;
+
+  --card: #1A1D24;
+  --card-foreground: #F1F5F9;
+
+  --popover: #1A1D24;
+  --popover-foreground: #F1F5F9;
+
+  --primary: #F27A38;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #EA580C;
+  --primary-light: #2D1E16;
+
+  --secondary: #3CCF8E;
+  --secondary-foreground: #FFFFFF;
+  --secondary-light: #162C22;
+
+  --muted: #242933;
+  --muted-foreground: #94A3B8;
+
+  --accent: #2A303C;
+  --accent-foreground: #F1F5F9;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #2D3544;
+  --border-peach: #3D2820;
+  --input: #2D3544;
+  --ring: #F27A38;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-primary-light: var(--primary-light);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary-light: var(--secondary-light);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
   --color-border-peach: var(--border-peach);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-card-bg: var(--card);
   --shadow-card: var(--card-shadow);
-  
-  --font-sans: var(--font-outfit), sans-serif;
-  --font-serif: var(--font-serif), serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --font-sans: var(--font-outfit), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-serif), Georgia, serif;
 }
 
 body {
@@ -38,18 +115,62 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom scrollbar matching the theme */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #FFFBF7;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FFDDD3;
+  background: rgba(242, 122, 56, 0.2);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FFBE9D;
+  background: var(--primary);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Print Stylesheet matching Filament */
+@media print {
+  @page {
+    size: auto;
+    margin: 0.5cm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  aside,
+  nav,
+  header,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .no-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }

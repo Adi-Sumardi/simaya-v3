@@ -29,8 +29,14 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("auth_user");
       
-      // Redirect to login if not already there
-      if (!window.location.pathname.startsWith("/login")) {
+      const isPublicPath = 
+        window.location.pathname.startsWith("/login") ||
+        window.location.pathname.startsWith("/guest-detail-asset") ||
+        window.location.pathname.startsWith("/guest-data-asset-ruangan") ||
+        window.location.pathname.startsWith("/guest-data-asset-lokasi");
+
+      // Redirect to login if not already on a public page
+      if (!isPublicPath) {
         window.location.href = "/login";
       }
     }

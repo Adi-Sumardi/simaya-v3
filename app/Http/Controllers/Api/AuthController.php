@@ -37,7 +37,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role_name ?? 'operator',
+                'role' => $user->getRoleNames()->first() ?? $user->role_name ?? 'Unit',
                 'unit' => $user->unit,
             ]
         ]);
@@ -59,7 +59,7 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role_name ?? 'operator',
+            'role' => $user->getRoleNames()->first() ?? $user->role_name ?? 'Unit',
             'unit' => $user->unit,
         ]);
     }

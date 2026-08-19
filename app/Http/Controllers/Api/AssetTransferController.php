@@ -22,6 +22,14 @@ class AssetTransferController extends Controller
             'items.asset'
         ]);
 
+        $user = $request->user();
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where(function($q) use ($user) {
+                $q->where('from_unit_id', $user->unit_id)
+                  ->orWhereHas('toLocation', fn($sq) => $sq->where('unit_id', $user->unit_id));
+            });
+        }
+
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));
         }
@@ -40,6 +48,7 @@ class AssetTransferController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
         $validated = $request->validate([
             'from_unit_id' => 'required|exists:units,id',
             'from_location_id' => 'required|exists:locations,id',
@@ -49,6 +58,10 @@ class AssetTransferController extends Controller
             'asset_ids' => 'required|array|min:1',
             'asset_ids.*' => 'exists:assets,id',
         ]);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $validated['from_unit_id'] = $user->unit_id;
+        }
 
         return DB::transaction(function () use ($validated, $request) {
             $transfer = AssetTransfer::create([
@@ -74,7 +87,7 @@ class AssetTransferController extends Controller
             return response()->json([
                 'message' => 'Mutasi/Transfer berhasil diajukan',
                 'transfer' => $transfer->load(['fromUnit', 'fromLocation', 'toLocation', 'requestedBy', 'items.asset'])
-            ], 21);
+            ], 201);
         });
     }
 
@@ -170,5 +183,20 @@ class AssetTransferController extends Controller
                 ];
             })
         ]);
+    }
+
+    public function publicDetail($id)
+    {
+        $transfer = AssetTransfer::with([
+            'fromUnit',
+            'fromLocation',
+            'toLocation.unit',
+            'requestedBy',
+            'approvedBy',
+            'items.asset.unit',
+            'items.asset.location',
+        ])->findOrFail($id);
+
+        return response()->json($transfer);
     }
 }

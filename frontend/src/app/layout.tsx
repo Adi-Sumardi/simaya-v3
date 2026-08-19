@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "SIMAYA - Sistem Informasi Manajemen Aset Yayasan",
   description: "Platform Modern Manajemen Aset Yayasan Terintegrasi dengan Pelacakan QR Code, Mutasi Real-time, dan Pencatatan Kondisi Aset.",
   keywords: ["Manajemen Aset", "SIMAYA", "QR Code Aset", "Pelacakan Aset Yayasan"],
+  icons: {
+    icon: "/images/yapi.png",
+    shortcut: "/images/yapi.png",
+    apple: "/images/yapi.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -32,6 +37,7 @@ export const viewport: Viewport = {
 };
 
 import { ToastProvider } from "@/context/ToastContext";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -41,12 +47,18 @@ export default function RootLayout({
   return (
     <html
       lang="id"
+      suppressHydrationWarning
       className={`${outfit.variable} ${playfair.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+      <head>
+        <link rel="icon" href="/images/yapi.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/images/yapi.png" />
+      </head>
+      <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ToastProvider>
           {children}
         </ToastProvider>
+        <Toaster position="top-right" richColors />
         
         {/* Service Worker Registration via next/script */}
         <Script id="pwa-service-worker" strategy="afterInteractive">

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PaginationProps {
   currentPage: number;
@@ -48,22 +49,22 @@ export default function Pagination({
   if (totalPages <= 1 && totalItems <= perPage) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-border-peach bg-white rounded-b-3xl">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-border bg-card rounded-b-2xl">
       {/* Info & Per Page */}
-      <div className="flex items-center gap-3 text-xs text-foreground/50 font-semibold">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
         <span>
-          {startItem}–{endItem} dari {totalItems} data
+          Menampilkan <strong className="text-foreground">{startItem}–{endItem}</strong> dari <strong className="text-foreground">{totalItems}</strong> data
         </span>
         {onPerPageChange && (
           <div className="flex items-center gap-1.5">
-            <span className="text-foreground/40">per halaman</span>
+            <span>per halaman:</span>
             <select
               value={perPage}
               onChange={(e) => {
                 onPerPageChange(Number(e.target.value));
                 onPageChange(1);
               }}
-              className="border border-border-peach rounded-lg px-2 py-1 text-xs font-bold text-foreground bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+              className="border border-border rounded-xl px-2.5 py-1 text-xs font-bold text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer transition-colors"
             >
               {perPageOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -77,62 +78,72 @@ export default function Pagination({
 
       {/* Page Buttons */}
       <div className="flex items-center gap-1">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/50 hover:text-primary hover:bg-primary-light/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-lg"
           title="Halaman Pertama"
         >
           <ChevronsLeft className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/50 hover:text-primary hover:bg-primary-light/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-lg"
           title="Halaman Sebelumnya"
         >
           <ChevronLeft className="w-4 h-4" />
-        </button>
+        </Button>
 
         {getPageNumbers().map((page, idx) =>
           page === "..." ? (
             <span
               key={`ellipsis-${idx}`}
-              className="w-8 h-8 flex items-center justify-center text-xs text-foreground/30 font-bold"
+              className="w-8 h-8 flex items-center justify-center text-xs text-muted-foreground font-bold"
             >
               …
             </span>
           ) : (
-            <button
+            <Button
               key={page}
+              variant={currentPage === page ? "default" : "ghost"}
+              size="icon"
               onClick={() => onPageChange(page as number)}
-              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+              className={`h-8 w-8 rounded-lg text-xs font-bold ${
                 currentPage === page
-                  ? "bg-primary text-white shadow-sm shadow-primary/20"
-                  : "text-foreground/60 hover:text-primary hover:bg-primary-light/30"
+                  ? "shadow-sm shadow-primary/20"
+                  : "text-foreground/75 hover:text-primary hover:bg-muted"
               }`}
             >
               {page}
-            </button>
+            </Button>
           )
         )}
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages || totalPages === 0}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/50 hover:text-primary hover:bg-primary-light/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-lg"
           title="Halaman Berikutnya"
         >
           <ChevronRight className="w-4 h-4" />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages || totalPages === 0}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-foreground/50 hover:text-primary hover:bg-primary-light/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 rounded-lg"
           title="Halaman Terakhir"
         >
           <ChevronsRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );

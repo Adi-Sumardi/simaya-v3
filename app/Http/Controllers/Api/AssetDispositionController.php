@@ -14,6 +14,13 @@ class AssetDispositionController extends Controller
     public function index(Request $request)
     {
         $query = AssetDisposition::with(['processedBy', 'items.asset']);
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->whereHas('items.asset', function($q) use ($user) {
+                $q->where('unit_id', $user->unit_id);
+            });
+        }
 
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));
@@ -94,7 +101,7 @@ class AssetDispositionController extends Controller
             return response()->json([
                 'message' => 'Penghapusan/Hibah/Sumbangan berhasil diajukan sebagai draft',
                 'disposition' => $disposition->load(['processedBy', 'items.asset'])
-            ], 21);
+            ], 201);
         });
     }
 
@@ -128,5 +135,16 @@ class AssetDispositionController extends Controller
         return response()->json([
             'message' => 'Pembatalan gagal. Pastikan status masih draft.'
         ], 400);
+    }
+
+    public function publicDetail($id)
+    {
+        $disposition = AssetDisposition::with([
+            'processedBy',
+            'items.asset.unit',
+            'items.asset.location',
+        ])->findOrFail($id);
+
+        return response()->json($disposition);
     }
 }

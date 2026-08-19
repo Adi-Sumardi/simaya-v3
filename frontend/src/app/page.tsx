@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
 import { api } from "@/lib/api";
@@ -12,28 +13,31 @@ import {
   Search, 
   Bell, 
   Plus, 
-  FileDown, 
   Activity,
   QrCode,
   X,
   Camera,
   Menu,
-  TrendingUp,
   AlertTriangle,
   Zap,
   Building,
   MapPin,
-  Coins,
-  Eye,
-  Edit,
-  Loader2
+  Loader2,
+  FileSpreadsheet
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [stats, setStats] = useState({
     totalAssets: 0,
@@ -53,6 +57,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
     const storedUser = localStorage.getItem("auth_user");
     if (storedUser) {
       try {
@@ -135,47 +140,53 @@ export default function DashboardPage() {
       />
 
       {/* Main Dashboard Area */}
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full animate-in fade-in duration-300">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
         
         {/* Header Section */}
-        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
+        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-background border border-border-peach hover:text-primary flex lg:hidden items-center justify-center transition-colors flex-shrink-0"
+              className="lg:hidden rounded-2xl shrink-0"
             >
               <Menu className="w-5 h-5" />
-            </button>
+            </Button>
             <div className="flex flex-col">
               <h2 className="text-xl sm:text-2xl font-extrabold font-serif text-foreground leading-tight">
-                Selamat Datang, <span className="text-primary">{currentUser ? currentUser.name : "Pengguna"}</span>
+                Selamat Datang, <span className="text-primary">{mounted && currentUser ? currentUser.name : "Pengguna"}</span>
               </h2>
-              <p className="text-xs text-foreground/50 font-medium mt-1">
-                Pantau dan kelola seluruh aset yayasan Anda secara real-time.
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                {mounted && currentUser?.unit ? `Unit Kerja: ${currentUser.unit.name} • ${currentUser.unit.number || 'Unit'}` : "Pantau dan kelola seluruh aset yayasan Anda secara real-time."}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64 group">
-              <Search className="w-4 h-4 text-foreground/45 absolute left-4 top-1/2 transform -translate-y-1/2 group-focus-within:text-primary transition-colors" />
-              <input 
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+              <Input 
                 type="text" 
                 placeholder="Cari aset..."
-                className="w-full pl-10 pr-4 py-2.5 bg-background border border-border-peach rounded-2xl text-xs font-semibold text-foreground focus:outline-none focus:border-primary transition-all"
+                className="pl-9 bg-card rounded-2xl text-xs h-10"
               />
             </div>
 
-            <button className="w-10 h-10 rounded-2xl bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-primary hover:bg-primary-light/30 transition-all relative flex-shrink-0">
-              <Bell className="w-5 h-5" />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="rounded-2xl shrink-0 relative"
+            >
+              <Bell className="w-4 h-4 text-muted-foreground" />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary animate-ping" />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
-            </button>
+            </Button>
           </div>
         </header>
 
-        {/* Stats Overview Grid (Combined for better spacing) */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Stats Overview Grid */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <StatCard 
             title="Total & Nilai Aset"
             value={`${stats.totalAssets.toLocaleString()} Aset`}
@@ -199,419 +210,445 @@ export default function DashboardPage() {
           />
         </section>
 
-
-        {/* Visual Analytics & Charts Section (Matching Charts Widgets) */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Visual Analytics & Charts Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           
-          {/* Distribution chart per Unit (AssetsChart.php - Bar chart style) */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card lg:col-span-1 flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Distribusi Aset per Unit</h3>
-              <p className="text-[11px] text-foreground/50 font-medium mb-4">Jumlah kepemilikan aset aktif per unit yayasan</p>
-            </div>
+          {/* Distribution chart per Unit */}
+          <Card className="rounded-3xl flex flex-col justify-between">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-base font-extrabold font-serif">Distribusi Aset per Unit</CardTitle>
+              <CardDescription className="text-xs">Jumlah kepemilikan aset aktif per unit yayasan</CardDescription>
+            </CardHeader>
             
-            {/* Custom SVG Bar Chart */}
-            <div className="h-48 flex items-end gap-3 px-2 pt-4 border-b border-border-peach/50 pb-2">
-              <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">450</span>
-                <div className="w-full bg-primary rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "75%" }} />
-                <span className="text-[9px] font-bold text-foreground/50 truncate max-w-full">Pusat</span>
-              </div>
-              <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">380</span>
-                <div className="w-full bg-secondary rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "63%" }} />
-                <span className="text-[9px] font-bold text-foreground/50 truncate max-w-full">SD</span>
-              </div>
-              <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">260</span>
-                <div className="w-full bg-amber-400 rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "43%" }} />
-                <span className="text-[9px] font-bold text-foreground/50 truncate max-w-full">SMP</span>
-              </div>
-              <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">150</span>
-                <div className="w-full bg-rose-400 rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "25%" }} />
-                <span className="text-[9px] font-bold text-foreground/50 truncate max-w-full">SMA</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-[10px] text-foreground/45 font-bold uppercase tracking-wider mt-4">
-              <Building className="w-3.5 h-3.5" />
-              <span>Total 4 Unit Aktif</span>
-            </div>
-          </div>
-
-          {/* Condition doughnut chart (AssetConditionChart.php) */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Kondisi Aset</h3>
-              <p className="text-[11px] text-foreground/50 font-medium">Kondisi fisik aset non-mutasi</p>
-            </div>
-
-            <div className="relative flex items-center justify-center my-4">
-              <svg className="w-32 h-32" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#FFF2EC" strokeWidth="4.5" />
-                <circle 
-                  cx="18" cy="18" r="15.915" 
-                  fill="none" 
-                  stroke="#3CCF8E" // Green for Bagus
-                  strokeWidth="4.5" 
-                  strokeDasharray="88 12" 
-                  strokeDashoffset="25" 
-                  strokeLinecap="round" 
-                />
-                <circle 
-                  cx="18" cy="18" r="15.915" 
-                  fill="none" 
-                  stroke="#ef4444" // Red for Rusak
-                  strokeWidth="4.5" 
-                  strokeDasharray="12 88" 
-                  strokeDashoffset="37" 
-                  strokeLinecap="round" 
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-black text-foreground">{stats.goodPercent}%</span>
-                <span className="text-[9px] font-bold text-foreground/40 uppercase">Bagus</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                  <span className="text-foreground/75 font-bold">Bagus</span>
+            <CardContent className="p-6 pt-0 flex flex-col justify-between flex-1">
+              {/* Custom SVG Bar Chart */}
+              <div className="h-44 flex items-end gap-3 px-2 pt-4 border-b border-border pb-2 mt-2">
+                <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                  <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">450</span>
+                  <div className="w-full bg-primary rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "75%" }} />
+                  <span className="text-[9px] font-bold text-muted-foreground truncate max-w-full">Pusat</span>
                 </div>
-                <span className="font-extrabold text-foreground">{stats.goodAssets} Unit</span>
-              </div>
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  <span className="text-foreground/75 font-bold">Rusak</span>
+                <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                  <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">380</span>
+                  <div className="w-full bg-secondary rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "63%" }} />
+                  <span className="text-[9px] font-bold text-muted-foreground truncate max-w-full">SD</span>
                 </div>
-                <span className="font-extrabold text-foreground">{stats.damagedAssets} Unit</span>
+                <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                  <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">260</span>
+                  <div className="w-full bg-amber-400 rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "43%" }} />
+                  <span className="text-[9px] font-bold text-muted-foreground truncate max-w-full">SMP</span>
+                </div>
+                <div className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                  <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">150</span>
+                  <div className="w-full bg-rose-400 rounded-t-xl transition-all duration-500 group-hover:brightness-95" style={{ height: "25%" }} />
+                  <span className="text-[9px] font-bold text-muted-foreground truncate max-w-full">SMA</span>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Status distribution chart (AssetStatusChart.php) */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Status Aset</h3>
-              <p className="text-[11px] text-foreground/50 font-medium">Status operasional inventaris</p>
-            </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-4">
+                <Building className="w-3.5 h-3.5" />
+                <span>Total 4 Unit Aktif</span>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="relative flex items-center justify-center my-4">
-              <svg className="w-32 h-32" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.915" fill="none" stroke="#FFF2EC" strokeWidth="4.5" />
-                <circle 
-                  cx="18" cy="18" r="15.915" 
-                  fill="none" 
-                  stroke="#3CCF8E" // Aktif (Green)
-                  strokeWidth="4.5" 
-                  strokeDasharray="81 19" 
-                  strokeDashoffset="25" 
-                  strokeLinecap="round" 
-                />
-                <circle 
-                  cx="18" cy="18" r="15.915" 
-                  fill="none" 
-                  stroke="#f59e0b" // Diperbaiki (Orange)
-                  strokeWidth="4.5" 
-                  strokeDasharray="10 90" 
-                  strokeDashoffset="44" 
-                  strokeLinecap="round" 
-                />
-                <circle 
-                  cx="18" cy="18" r="15.915" 
-                  fill="none" 
-                  stroke="#ef4444" // Tidak aktif (Red)
-                  strokeWidth="4.5" 
-                  strokeDasharray="9 91" 
-                  strokeDashoffset="54" 
-                  strokeLinecap="round" 
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-black text-foreground">{stats.activePercent}%</span>
-                <span className="text-[9px] font-bold text-foreground/40 uppercase">Aktif</span>
-              </div>
-            </div>
+          {/* Condition doughnut chart */}
+          <Card className="rounded-3xl flex flex-col justify-between">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-base font-extrabold font-serif">Kondisi Aset</CardTitle>
+              <CardDescription className="text-xs">Kondisi fisik aset non-mutasi</CardDescription>
+            </CardHeader>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                  <span className="text-foreground/75 font-bold">Aktif</span>
+            <CardContent className="p-6 pt-0 flex flex-col justify-between flex-1">
+              <div className="relative flex items-center justify-center my-3">
+                <svg className="w-32 h-32" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="currentColor" className="text-muted" strokeWidth="4.5" />
+                  <circle 
+                    cx="18" cy="18" r="15.915" 
+                    fill="none" 
+                    stroke="#3CCF8E" 
+                    strokeWidth="4.5" 
+                    strokeDasharray="88 12" 
+                    strokeDashoffset="25" 
+                    strokeLinecap="round" 
+                  />
+                  <circle 
+                    cx="18" cy="18" r="15.915" 
+                    fill="none" 
+                    stroke="#EF4444" 
+                    strokeWidth="4.5" 
+                    strokeDasharray="12 88" 
+                    strokeDashoffset="37" 
+                    strokeLinecap="round" 
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-2xl font-black text-foreground">{stats.goodPercent}%</span>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase">Bagus</span>
                 </div>
-                <span className="font-extrabold text-foreground">1,010 Unit</span>
               </div>
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <span className="text-foreground/75 font-bold">Diperbaiki</span>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                    <span className="text-foreground/80 font-bold">Bagus</span>
+                  </div>
+                  <span className="font-extrabold text-foreground">{stats.goodAssets} Unit</span>
                 </div>
-                <span className="font-extrabold text-foreground">125 Unit</span>
-              </div>
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  <span className="text-foreground/75 font-bold">Tidak Aktif</span>
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
+                    <span className="text-foreground/80 font-bold">Rusak</span>
+                  </div>
+                  <span className="font-extrabold text-foreground">{stats.damagedAssets} Unit</span>
                 </div>
-                <span className="font-extrabold text-foreground">105 Unit</span>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Status distribution chart */}
+          <Card className="rounded-3xl flex flex-col justify-between">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-base font-extrabold font-serif">Status Aset</CardTitle>
+              <CardDescription className="text-xs">Status operasional inventaris</CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6 pt-0 flex flex-col justify-between flex-1">
+              <div className="relative flex items-center justify-center my-3">
+                <svg className="w-32 h-32" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="currentColor" className="text-muted" strokeWidth="4.5" />
+                  <circle 
+                    cx="18" cy="18" r="15.915" 
+                    fill="none" 
+                    stroke="#3CCF8E" 
+                    strokeWidth="4.5" 
+                    strokeDasharray="81 19" 
+                    strokeDashoffset="25" 
+                    strokeLinecap="round" 
+                  />
+                  <circle 
+                    cx="18" cy="18" r="15.915" 
+                    fill="none" 
+                    stroke="#F59E0B" 
+                    strokeWidth="4.5" 
+                    strokeDasharray="10 90" 
+                    strokeDashoffset="44" 
+                    strokeLinecap="round" 
+                  />
+                  <circle 
+                    cx="18" cy="18" r="15.915" 
+                    fill="none" 
+                    stroke="#EF4444" 
+                    strokeWidth="4.5" 
+                    strokeDasharray="9 91" 
+                    strokeDashoffset="54" 
+                    strokeLinecap="round" 
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-2xl font-black text-foreground">{stats.activePercent}%</span>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase">Aktif</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                    <span className="text-foreground/80 font-bold">Aktif</span>
+                  </div>
+                  <span className="font-extrabold text-foreground">{stats.activeAssets} Unit</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <span className="text-foreground/80 font-bold">Diperbaiki</span>
+                  </div>
+                  <span className="font-extrabold text-foreground">125 Unit</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
+                    <span className="text-foreground/80 font-bold">Tidak Aktif</span>
+                  </div>
+                  <span className="font-extrabold text-foreground">105 Unit</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
-        {/* Dashboard Widgets Tables Row (Matching DamagedAssetsWidget & RecentTransfersWidget) */}
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Dashboard Tables Row */}
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           
-          {/* Transfer Aset Terbaru (RecentTransfersWidget.php) */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card flex flex-col gap-4">
-            <div className="flex justify-between items-center">
+          {/* Transfer Aset Terbaru */}
+          <Card className="rounded-3xl flex flex-col gap-3">
+            <CardHeader className="p-6 pb-2 flex flex-row items-center justify-between">
               <div>
-                <h3 className="text-base font-extrabold text-foreground font-serif">Transfer Aset Terbaru</h3>
-                <p className="text-[11px] text-foreground/50 font-medium">Mutasi unit & pemindahan ruangan terupdate</p>
+                <CardTitle className="text-base font-extrabold font-serif">Transfer Aset Terbaru</CardTitle>
+                <CardDescription className="text-xs">Mutasi unit & pemindahan ruangan terupdate</CardDescription>
               </div>
-              <GitCompare className="w-5 h-5 text-primary" />
-            </div>
+              <div className="w-9 h-9 rounded-xl bg-primary-light text-primary border border-primary/20 flex items-center justify-center">
+                <GitCompare className="w-4 h-4" />
+              </div>
+            </CardHeader>
 
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[500px]">
-                <thead>
-                  <tr className="bg-primary-light/30 border-b border-border-peach">
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">No. Transfer</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Asal Unit</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Ke Lokasi</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Jumlah Aset</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-peach/30">
-                  {recentTransfers.map((trsf) => (
-                    <tr key={trsf.id} className="hover:bg-primary-light/5 transition-colors">
-                      <td className="p-3 text-xs font-bold text-primary">{trsf.transfer_number}</td>
-                      <td className="p-3 text-xs font-semibold text-foreground/80">{trsf.unit}</td>
-                      <td className="p-3 text-xs font-semibold text-foreground/80 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-emerald-500" />
-                        {trsf.toLocation}
-                      </td>
-                      <td className="p-3 text-xs">
-                        <span className="px-2 py-0.5 rounded-lg bg-sky-100 text-sky-700 text-[10px] font-bold">
-                          {trsf.assetsCount} Aset
-                        </span>
-                      </td>
-                      <td className="p-3 text-xs">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                          trsf.status === "completed" 
-                            ? "bg-emerald-100 text-emerald-800" 
-                            : trsf.status === "approved"
-                            ? "bg-sky-100 text-sky-800"
-                            : trsf.status === "rejected"
-                            ? "bg-rose-100 text-rose-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}>
-                          {trsf.status === "completed" ? "Selesai" : trsf.status === "approved" ? "Disetujui" : trsf.status === "rejected" ? "Ditolak" : "Pending"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            <CardContent className="p-6 pt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>No. Transfer</TableHead>
+                    <TableHead>Asal Unit</TableHead>
+                    <TableHead>Ke Lokasi</TableHead>
+                    <TableHead>Jumlah Aset</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTransfers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Belum ada data transfer aset terbaru.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    recentTransfers.map((trsf) => (
+                      <TableRow key={trsf.id}>
+                        <TableCell className="font-bold text-primary">{trsf.transfer_number}</TableCell>
+                        <TableCell className="font-semibold text-foreground/80">{trsf.unit}</TableCell>
+                        <TableCell className="font-semibold text-foreground/80 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>{trsf.toLocation}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="info" className="text-[10px] font-bold">
+                            {trsf.assetsCount} Aset
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              trsf.status === "completed" 
+                                ? "success" 
+                                : trsf.status === "approved"
+                                ? "info"
+                                : trsf.status === "rejected"
+                                ? "destructive"
+                                : "warning"
+                            }
+                            className="text-[10px] font-bold uppercase"
+                          >
+                            {trsf.status === "completed" ? "Selesai" : trsf.status === "approved" ? "Disetujui" : trsf.status === "rejected" ? "Ditolak" : "Pending"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-          {/* Aset Rusak - Perlu Perhatian (DamagedAssetsWidget.php) */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card flex flex-col gap-4">
-            <div className="flex justify-between items-center">
+          {/* Aset Rusak - Perlu Perhatian */}
+          <Card className="rounded-3xl flex flex-col gap-3">
+            <CardHeader className="p-6 pb-2 flex flex-row items-center justify-between">
               <div>
-                <h3 className="text-base font-extrabold text-foreground font-serif">Aset Rusak - Perlu Perhatian</h3>
-                <p className="text-[11px] text-foreground/50 font-medium">List inventaris rusak yang butuh penanganan</p>
+                <CardTitle className="text-base font-extrabold font-serif">Aset Rusak - Perlu Perhatian</CardTitle>
+                <CardDescription className="text-xs">List inventaris rusak yang butuh penanganan</CardDescription>
               </div>
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-            </div>
+              <div className="w-9 h-9 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+            </CardHeader>
 
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[500px]">
-                <thead>
-                  <tr className="bg-primary-light/30 border-b border-border-peach">
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Nama Aset</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">No. Aset</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Unit</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Lokasi</th>
-                    <th className="p-3 text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">Nilai</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-peach/30">
-                  {damagedAssets.map((asset) => (
-                    <tr key={asset.id} className="hover:bg-primary-light/5 transition-colors">
-                      <td className="p-3 text-xs">
-                        <div className="flex flex-col">
-                          <span className="font-extrabold text-foreground">{asset.name}</span>
-                          <span className="text-[9px] text-foreground/45 font-bold">{asset.brand}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-xs font-bold text-primary">{asset.entries_number}</td>
-                      <td className="p-3 text-xs font-semibold text-foreground/75">{asset.unit}</td>
-                      <td className="p-3 text-xs font-semibold text-foreground/75">{asset.location}</td>
-                      <td className="p-3 text-xs font-extrabold text-foreground">
-                        Rp {asset.price.toLocaleString("id-ID")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            <CardContent className="p-6 pt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama Aset</TableHead>
+                    <TableHead>No. Aset</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Lokasi</TableHead>
+                    <TableHead>Nilai</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {damagedAssets.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Tidak ada aset berkondisi rusak saat ini.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    damagedAssets.map((asset) => (
+                      <TableRow key={asset.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-foreground">{asset.name}</span>
+                            <span className="text-[10px] text-muted-foreground font-bold">{asset.brand}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-bold text-primary">#{asset.entries_number}</TableCell>
+                        <TableCell className="font-semibold text-foreground/80">{asset.unit}</TableCell>
+                        <TableCell className="font-semibold text-foreground/80">{asset.location}</TableCell>
+                        <TableCell className="font-extrabold text-foreground">
+                          Rp {asset.price.toLocaleString("id-ID")}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Quick Actions & Audit Activities Row */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           
           {/* Quick Actions Card */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card flex flex-col gap-4">
-            <div>
-              <h3 className="text-base font-extrabold text-foreground font-serif">Aksi Cepat</h3>
-              <p className="text-[11px] text-foreground/50 font-medium">Lakukan pengisian data dalam satu klik</p>
-            </div>
+          <Card className="rounded-3xl flex flex-col gap-3">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-base font-extrabold font-serif">Aksi Cepat</CardTitle>
+              <CardDescription className="text-xs">Lakukan pengisian data dalam satu klik</CardDescription>
+            </CardHeader>
             
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <a href="/assets" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border-peach rounded-2xl gap-2 transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-white border border-border-peach text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-center">Registrasi Aset</span>
-              </a>
+            <CardContent className="p-6 pt-0">
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                <Link href="/assets" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border rounded-2xl gap-2 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-center">Registrasi Aset</span>
+                </Link>
 
-              <a href="/transfers" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border-peach rounded-2xl gap-2 transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-white border border-border-peach text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-                  <GitCompare className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-center">Ajukan Mutasi</span>
-              </a>
+                <Link href="/transfers" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border rounded-2xl gap-2 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+                    <GitCompare className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-center">Ajukan Mutasi</span>
+                </Link>
 
-              <a href="/dispositions" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border-peach rounded-2xl gap-2 transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-white border border-border-peach text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-center">Disposisi Aset</span>
-              </a>
+                <Link href="/dispositions" className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border rounded-2xl gap-2 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-center">Disposisi Aset</span>
+                </Link>
 
-              <button 
-                onClick={handleScanSimulation}
-                className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border-peach rounded-2xl gap-2 transition-all group cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-border-peach text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-center">Pindai QR</span>
-              </button>
-            </div>
-          </div>
+                <button 
+                  onClick={handleScanSimulation}
+                  className="flex flex-col items-center justify-center p-4 bg-primary-light/40 hover:bg-primary-light text-primary border border-border rounded-2xl gap-2 transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border text-primary flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-center">Pindai QR</span>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Audit trail / Activity Feed */}
-          <div className="bg-white border border-border-peach rounded-3xl p-6 shadow-card lg:col-span-2 flex flex-col gap-4">
-            <div className="flex justify-between items-center">
+          <Card className="rounded-3xl lg:col-span-2 flex flex-col gap-3">
+            <CardHeader className="p-6 pb-2 flex flex-row items-center justify-between">
               <div>
-                <h3 className="text-base font-extrabold text-foreground font-serif">Aktivitas Terkini</h3>
-                <p className="text-[11px] text-foreground/50 font-medium">Audit logs operasi database terbaru</p>
+                <CardTitle className="text-base font-extrabold font-serif">Aktivitas Terkini</CardTitle>
+                <CardDescription className="text-xs">Audit logs operasi database terbaru</CardDescription>
               </div>
-              <span className="p-2 bg-primary-light rounded-xl text-primary flex-shrink-0">
-                <Activity className="w-5 h-5 animate-pulse" />
-              </span>
-            </div>
+              <div className="p-2 bg-primary-light text-primary border border-primary/20 rounded-xl shrink-0">
+                <Activity className="w-4 h-4 animate-pulse" />
+              </div>
+            </CardHeader>
 
-            <div className="flex flex-col gap-4 mt-2">
-              <div className="flex gap-4 p-3.5 bg-background border border-border-peach/50 hover:border-primary/30 rounded-2xl transition-colors">
+            <CardContent className="p-6 pt-0 flex flex-col gap-3 mt-1">
+              <div className="flex gap-4 p-3.5 bg-muted/40 border border-border rounded-2xl transition-colors hover:border-primary/40">
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-black text-primary uppercase tracking-wider">Aset dibuat</span>
-                    <span className="text-[10px] text-foreground/45 font-bold">2 menit yang lalu</span>
+                    <Badge variant="primaryLight" className="text-[10px] font-black uppercase">
+                      Aset dibuat
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground font-semibold">2 menit yang lalu</span>
                   </div>
-                  <p className="text-xs font-semibold text-foreground/80 leading-relaxed">
-                    Adi Sumardi membuat data aset: <span className="font-mono text-[11px] bg-primary-light/40 px-1 py-0.5 rounded text-primary">Laptop ASUS ExpertBook B1 | AST-2026-0001 | BRG-001 | -</span>
+                  <p className="text-xs font-semibold text-foreground/85 leading-relaxed mt-1">
+                    Adi Sumardi membuat data aset: <span className="font-mono text-[11px] bg-card border border-border px-1.5 py-0.5 rounded-md text-primary font-bold">Laptop ASUS ExpertBook B1 | AST-2026-0001</span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4 p-3.5 bg-background border border-border-peach/50 hover:border-primary/30 rounded-2xl transition-colors">
+              <div className="flex gap-4 p-3.5 bg-muted/40 border border-border rounded-2xl transition-colors hover:border-primary/40">
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-black text-amber-600 uppercase tracking-wider">Mutasi diubah</span>
-                    <span className="text-[10px] text-foreground/45 font-bold">1 jam yang lalu</span>
+                    <Badge variant="warning" className="text-[10px] font-black uppercase">
+                      Mutasi diubah
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground font-semibold">1 jam yang lalu</span>
                   </div>
-                  <p className="text-xs font-semibold text-foreground/80 leading-relaxed">
-                    Budi Utomo merubah mutasi transfer: <span className="font-mono text-[11px] bg-primary-light/40 px-1 py-0.5 rounded text-primary">Mutasi Laptop SD ke SMP | TRF-2026-0002 | - | 1</span>
+                  <p className="text-xs font-semibold text-foreground/85 leading-relaxed mt-1">
+                    Budi Utomo merubah mutasi transfer: <span className="font-mono text-[11px] bg-card border border-border px-1.5 py-0.5 rounded-md text-primary font-bold">Mutasi Laptop SD ke SMP | TRF-2026-0002</span>
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </section>
 
       </main>
 
-      {/* QR Code Scanner Simulation Modal Overlay */}
-      {isScanning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-300">
-            <button 
-              onClick={() => setIsScanning(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {/* QR Code Scanner Dialog */}
+      <Dialog open={isScanning} onOpenChange={setIsScanning}>
+        <DialogContent className="max-w-md p-6 rounded-3xl">
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="text-lg font-extrabold font-serif">Scan QR Code Aset</DialogTitle>
+            <DialogDescription className="text-xs">
+              Dekatkan barcode atau QR Code ke kamera laptop Anda
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="text-center">
-              <h3 className="text-lg font-extrabold text-foreground font-serif">Scan QR Code Aset</h3>
-              <p className="text-xs text-foreground/50 font-medium mt-1">
-                Dekatkan barcode atau QR Code ke kamera laptop Anda
-              </p>
-            </div>
-
-            {/* Camera Viewfinder Screen Simulation */}
-            <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-zinc-950 flex items-center justify-center border-2 border-primary">
-              {!scanResult ? (
-                <>
-                  <div className="absolute w-48 h-48 border-2 border-dashed border-primary/60 rounded-xl animate-pulse" />
-                  <div className="absolute left-0 w-full h-0.5 bg-primary animate-bounce shadow-md shadow-primary/80" style={{ animationDuration: '2s' }} />
-                  <div className="flex flex-col items-center gap-2 text-white/40">
-                    <Camera className="w-12 h-12 animate-pulse" />
-                    <span className="text-[10px] font-bold tracking-wider uppercase">Mencari QR Code...</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center text-white gap-4 bg-emerald-950/80 w-full h-full animate-in fade-in duration-300">
-                  <CheckCircle2 className="w-16 h-16 text-emerald-400" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">QR Code Terdeteksi</span>
-                    <span className="text-base font-extrabold mt-1 font-serif">Proyektor Epson EB-X41</span>
-                    <span className="text-[10px] text-white/50 break-all mt-2">{scanResult}</span>
-                  </div>
+          {/* Camera Viewfinder Screen Simulation */}
+          <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-zinc-950 flex items-center justify-center border-2 border-primary my-2">
+            {!scanResult ? (
+              <>
+                <div className="absolute w-48 h-48 border-2 border-dashed border-primary/60 rounded-xl animate-pulse" />
+                <div className="absolute left-0 w-full h-0.5 bg-primary animate-bounce shadow-md shadow-primary/80" style={{ animationDuration: '2s' }} />
+                <div className="flex flex-col items-center gap-2 text-white/40">
+                  <Camera className="w-12 h-12 animate-pulse" />
+                  <span className="text-[10px] font-bold tracking-wider uppercase">Mencari QR Code...</span>
                 </div>
-              )}
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setIsScanning(false)}
-                className="flex-1 py-3 bg-background hover:bg-primary-light/40 border border-border-peach text-foreground/70 hover:text-primary rounded-xl font-bold text-xs transition-colors"
-              >
-                Tutup
-              </button>
-              {scanResult && (
-                <a
-                  href={`/assets`}
-                  className="flex-1 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs text-center transition-colors shadow-md shadow-primary/10"
-                >
-                  Buka Detail Aset
-                </a>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center text-white gap-3 bg-emerald-950/90 w-full h-full animate-in fade-in duration-300">
+                <CheckCircle2 className="w-16 h-16 text-emerald-400" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">QR Code Terdeteksi</span>
+                  <span className="text-base font-extrabold mt-1 font-serif">Proyektor Epson EB-X41</span>
+                  <span className="text-[10px] text-white/50 break-all mt-2">{scanResult}</span>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+
+          {/* Action buttons */}
+          <div className="flex gap-2.5 mt-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsScanning(false)}
+              className="flex-1 rounded-xl"
+            >
+              Tutup
+            </Button>
+            {scanResult && (
+              <Button
+                asChild
+                className="flex-1 rounded-xl"
+              >
+                <Link href="/assets">Buka Detail Aset</Link>
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

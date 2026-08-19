@@ -44,6 +44,17 @@ class Asset extends Model
         'aquisition_date' => 'date',
     ];
 
+    protected $appends = [
+        'full_code',
+        'book_value',
+        'accumulated_depreciation',
+        'depreciation_percent',
+        'depreciation_status',
+        'effective_depreciation_rate',
+        'useful_life_months',
+        'qr_code_image',
+    ];
+
     /**
      * Clear cache saat asset di CRUD
      */

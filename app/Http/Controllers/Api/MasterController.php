@@ -20,6 +20,12 @@ class MasterController extends Controller
     public function getLocations(Request $request)
     {
         $query = Location::with(['unit', 'user']);
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -30,13 +36,21 @@ class MasterController extends Controller
         return response()->json($query->latest()->paginate($request->integer('per_page', 10)));
     }
 
-    public function allLocations()
+    public function allLocations(Request $request)
     {
-        return response()->json(Location::with(['unit', 'user'])->withCount('assets')->get());
+        $query = Location::with(['unit', 'user'])->withCount('assets');
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('unit_id', $user->unit_id);
+        }
+
+        return response()->json($query->get());
     }
 
     public function storeLocation(Request $request)
     {
+        $user = $request->user();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'number' => 'required|string|max:255|unique:locations,number',
@@ -44,6 +58,11 @@ class MasterController extends Controller
             'unit_id' => 'required|exists:units,id',
             'user_id' => 'required|exists:users,id',
         ]);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $validated['unit_id'] = $user->unit_id;
+        }
+
         $location = Location::create($validated);
         return response()->json(['message' => 'Lokasi berhasil ditambahkan', 'location' => $location->load(['unit', 'user'])], 201);
     }
@@ -51,6 +70,7 @@ class MasterController extends Controller
     public function updateLocation(Request $request, $id)
     {
         $location = Location::findOrFail($id);
+        $user = $request->user();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'number' => 'required|string|max:255|unique:locations,number,' . $id,
@@ -58,6 +78,11 @@ class MasterController extends Controller
             'unit_id' => 'required|exists:units,id',
             'user_id' => 'required|exists:users,id',
         ]);
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $validated['unit_id'] = $user->unit_id;
+        }
+
         $location->update($validated);
         return response()->json(['message' => 'Lokasi berhasil diperbarui', 'location' => $location->load(['unit', 'user'])]);
     }
@@ -72,6 +97,12 @@ class MasterController extends Controller
     public function getUnits(Request $request)
     {
         $query = Unit::query();
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('id', $user->unit_id);
+        }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -82,9 +113,16 @@ class MasterController extends Controller
         return response()->json($query->latest()->paginate($request->integer('per_page', 10)));
     }
 
-    public function allUnits()
+    public function allUnits(Request $request)
     {
-        return response()->json(Unit::withCount('asset')->get());
+        $query = Unit::withCount('asset');
+        $user = $request->user();
+
+        if ($user && ($user->hasRole('Unit') || $user->role === 'Unit' || ($user->unit_id && !$user->hasRole('super_admin')))) {
+            $query->where('id', $user->unit_id);
+        }
+
+        return response()->json($query->get());
     }
 
     public function storeUnit(Request $request)

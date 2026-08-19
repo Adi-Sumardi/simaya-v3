@@ -4,8 +4,14 @@ import { useState, useMemo, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Pagination from "@/components/ui/Pagination";
 import { api } from "@/lib/api";
-import { Building, Plus, Search, Menu, Eye, Edit, Trash, X, Loader2 } from "lucide-react";
+import { Building, Plus, Menu, Edit, Trash, Loader2 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export default function UnitsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -92,167 +98,196 @@ export default function UnitsPage() {
     <div className="flex bg-background min-h-screen relative overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-10 flex flex-col gap-6 md:gap-8 overflow-y-auto max-h-screen w-full">
-        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-white border border-border-peach/60 rounded-3xl p-6 shadow-sm">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+        <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="icon"
               onClick={() => setSidebarOpen(true)}
-              className="w-10 h-10 rounded-2xl bg-background border border-border-peach hover:text-primary flex lg:hidden items-center justify-center transition-colors flex-shrink-0"
+              className="lg:hidden rounded-2xl shrink-0"
             >
               <Menu className="w-5 h-5" />
-            </button>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold font-serif text-foreground">Daftar Unit Kerja</h2>
-              <p className="text-xs text-foreground/50 font-medium mt-1">Kelola data unit kerja yayasan yang terafiliasi dengan kepemilikan aset.</p>
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center text-primary border border-primary/20 shrink-0">
+                <Building className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-extrabold font-serif text-foreground">Daftar Unit Kerja</h2>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">Kelola data unit kerja yayasan yang terafiliasi dengan kepemilikan aset.</p>
+              </div>
             </div>
           </div>
-          <button 
+          <Button 
             onClick={() => setCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-md shadow-primary/10 transition-colors w-full sm:w-auto justify-center"
+            className="rounded-2xl gap-2 h-11 px-5 shadow-md shadow-primary/20 text-xs font-bold"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Unit Kerja</span>
-          </button>
+          </Button>
         </header>
 
         {/* Data Table */}
-        <section className="bg-white border border-border-peach rounded-3xl overflow-hidden shadow-card">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="bg-primary-light/40 border-b border-border-peach">
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Nomor Unit</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Nama Unit</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider">Tanggal Dibuat</th>
-                  <th className="p-5 text-xs font-extrabold text-foreground/75 uppercase tracking-wider text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-peach/50">
-                {paginatedUnits.map((unit) => (
-                  <tr key={unit.id} className="hover:bg-primary-light/10 transition-colors">
-                    <td className="p-5 text-xs font-bold text-primary">{unit.number}</td>
-                    <td className="p-5 text-xs font-extrabold text-foreground">{unit.name}</td>
-                    <td className="p-5 text-xs font-semibold text-foreground/60">{unit.created_at}</td>
-                    <td className="p-5 text-center">
-                      <div className="flex justify-center gap-2">
-                        <button 
-                          onClick={() => setEditModal(unit)}
-                          className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-primary transition-colors shadow-sm"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(unit.id)}
-                          className="w-8 h-8 rounded-lg bg-background border border-border-peach flex items-center justify-center text-foreground/60 hover:text-red-500 transition-colors shadow-sm"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {paginatedUnits.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-xs font-semibold text-foreground/40">
-                      Tidak ada data unit kerja.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={units.length}
-            perPage={perPage}
-            onPageChange={setCurrentPage}
-            onPerPageChange={setPerPage}
-          />
-        </section>
-
+        <Card className="rounded-3xl shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-xs text-muted-foreground font-semibold">Memuat data unit...</p>
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nomor Unit</TableHead>
+                      <TableHead>Nama Unit</TableHead>
+                      <TableHead>Tanggal Dibuat</TableHead>
+                      <TableHead className="text-center">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedUnits.map((unit) => (
+                      <TableRow key={unit.id}>
+                        <TableCell className="font-bold text-primary font-mono">{unit.number}</TableCell>
+                        <TableCell className="font-extrabold text-foreground">{unit.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {unit.created_at ? new Date(unit.created_at).toLocaleDateString("id-ID") : "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button 
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditModal(unit)}
+                              className="h-8 w-8 rounded-lg border border-border"
+                              title="Ubah Unit"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(unit.id)}
+                              className="h-8 w-8 rounded-lg border border-border text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Hapus Unit"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {paginatedUnits.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="p-12 text-center text-xs font-semibold text-muted-foreground">
+                          Tidak ada data unit kerja.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={units.length}
+                  perPage={perPage}
+                  onPageChange={setCurrentPage}
+                  onPerPageChange={setPerPage}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
       {/* Create Modal */}
-      {createModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setCreateModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-base font-extrabold text-foreground font-serif">Tambah Unit Kerja</h3>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nama Unit</label>
-                <input 
-                  type="text" 
-                  value={newName} 
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Contoh: Unit SD Islam..." 
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nomor Unit (Kode)</label>
-                <input 
-                  type="text" 
-                  value={newNumber} 
-                  onChange={(e) => setNewNumber(e.target.value)}
-                  placeholder="Contoh: UNT-005" 
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold"
-                />
-              </div>
-              <button type="submit" className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover transition-colors">
+      <Dialog open={createModal} onOpenChange={setCreateModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Tambah Unit Kerja</DialogTitle>
+            <DialogDescription className="text-xs">
+              Tambahkan entitas unit kerja baru di lingkungan yayasan.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="unit-name">Nama Unit</Label>
+              <Input 
+                id="unit-name"
+                type="text" 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Contoh: Unit SD Islam..." 
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="unit-number">Nomor Unit (Kode)</Label>
+              <Input 
+                id="unit-number"
+                type="text" 
+                value={newNumber} 
+                onChange={(e) => setNewNumber(e.target.value)}
+                placeholder="Contoh: UNT-005" 
+              />
+            </div>
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateModal(false)} className="rounded-xl">
+                Batal
+              </Button>
+              <Button type="submit" className="rounded-xl">
                 Simpan Unit
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Modal */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-border-peach rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-6 relative animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setEditModal(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-background border border-border-peach hover:text-primary flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-base font-extrabold text-foreground font-serif">Ubah Unit Kerja</h3>
-            <form onSubmit={handleEdit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nama Unit</label>
-                <input 
+      <Dialog open={!!editModal} onOpenChange={(open) => !open && setEditModal(null)}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold font-serif">Ubah Unit Kerja</DialogTitle>
+            <DialogDescription className="text-xs">
+              Perbarui nama atau kode unit kerja.
+            </DialogDescription>
+          </DialogHeader>
+          {editModal && (
+            <form onSubmit={handleEdit} className="flex flex-col gap-4 mt-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-unit-name">Nama Unit</Label>
+                <Input 
+                  id="edit-unit-name"
                   type="text" 
                   value={editModal.name} 
                   onChange={(e) => setEditModal({ ...editModal, name: e.target.value })}
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold"
                   required
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-foreground/75">Nomor Unit (Kode)</label>
-                <input 
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-unit-number">Nomor Unit (Kode)</Label>
+                <Input 
+                  id="edit-unit-number"
                   type="text" 
                   value={editModal.number} 
                   onChange={(e) => setEditModal({ ...editModal, number: e.target.value })}
-                  className="px-4 py-2.5 bg-background border border-border-peach rounded-xl text-xs font-semibold"
                   required
                 />
               </div>
-              <button type="submit" className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-hover transition-colors">
-                Simpan Perubahan
-              </button>
+              <DialogFooter className="mt-2">
+                <Button type="button" variant="outline" onClick={() => setEditModal(null)} className="rounded-xl">
+                  Batal
+                </Button>
+                <Button type="submit" className="rounded-xl">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

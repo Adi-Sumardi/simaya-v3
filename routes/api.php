@@ -11,6 +11,12 @@ use App\Http\Controllers\Api\YapinetSummaryController;
 // Public authentication endpoint
 Route::post('/login', [AuthController::class, 'login']);
 
+// Public QR Scan & Public Asset/Location/Transfer/Disposition Detail Endpoints
+Route::get('/public/assets/{id}', [AssetController::class, 'publicDetail']);
+Route::get('/public/locations/{id}', [AssetController::class, 'publicLocationDetail']);
+Route::get('/public/transfers/{id}', [AssetTransferController::class, 'publicDetail']);
+Route::get('/public/dispositions/{id}', [AssetDispositionController::class, 'publicDetail']);
+
 // Yapinet integration endpoint, protected by static API key (not Sanctum)
 Route::middleware('yapinet.auth')->get('integrations/yapinet/summary', [YapinetSummaryController::class, 'summary']);
 
@@ -23,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Assets CRUD & custom bulk actions
     Route::get('/assets/stats', [AssetController::class, 'stats']);
+    Route::get('/assets/depreciation-stats', [AssetController::class, 'depreciationStats']);
     Route::post('/assets/bulk-update', [AssetController::class, 'bulkUpdate']);
     Route::post('/assets/bulk-add-photo', [AssetController::class, 'bulkAddPhoto']);
     Route::apiResource('/assets', AssetController::class);

@@ -9,6 +9,10 @@ Route::get('/', function () {
     return redirect('/admin/login');
 });
 
+Route::get('/login', function () {
+    return response()->json(['message' => 'Unauthenticated.'], 401);
+})->name('login');
+
 Route::get('/guest-data-asset', [AssetController::class, 'asset'])->name('asset.all');
 Route::get('/guest-detail-asset/{id}', [AssetController::class, 'detail'])->name('asset.detail');
 Route::get('/guest-data-asset-lokasi/{id}', [AssetController::class, 'lokasi'])->name('asset.lokasi');
