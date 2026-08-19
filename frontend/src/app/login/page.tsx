@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  Boxes, 
   KeyRound, 
   Mail, 
   AlertCircle, 
@@ -21,8 +20,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -34,6 +32,28 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Live Statistics State from database
+  const [stats, setStats] = useState<{
+    total_assets: number;
+    total_units: number;
+    total_locations: number;
+    condition_good_percent: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchPublicStats = async () => {
+      try {
+        const res = await api.get("/public/stats");
+        if (res && res.total_assets !== undefined) {
+          setStats(res);
+        }
+      } catch (err) {
+        console.error("Failed to load public stats on login page", err);
+      }
+    };
+    fetchPublicStats();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +78,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background relative justify-center items-center p-4 md:p-8 overflow-hidden">
+    <div className="min-h-screen bg-background relative flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-x-hidden">
       {/* Dynamic Background Accents */}
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-gradient-to-tr from-primary/20 to-orange-300/10 rounded-full blur-3xl -z-10 animate-float-1" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-gradient-to-bl from-primary/15 to-amber-300/10 rounded-full blur-3xl -z-10 animate-float-2" />
@@ -80,11 +100,11 @@ export default function LoginPage() {
         }
       `}</style>
 
-      {/* Main Grid Container */}
-      <div className="grid grid-cols-12 gap-6 md:gap-8 max-w-7xl w-full items-stretch z-10">
+      {/* Main Symmetrical 3-Column Container */}
+      <div className="flex flex-col lg:flex-row items-center justify-center gap-6 xl:gap-8 max-w-6xl w-full mx-auto my-auto z-10 py-6">
         
         {/* LEFT COLUMN: Feature Highlights */}
-        <section className="col-span-3 hidden lg:flex flex-col gap-6 justify-center">
+        <section className="hidden xl:flex w-72 shrink-0 flex-col justify-center">
           <Card className="bg-card/75 backdrop-blur-xl border-border/80 rounded-[2.5rem] p-6 shadow-xl flex flex-col gap-5">
             <h3 className="text-base font-black font-serif text-foreground flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
@@ -126,7 +146,7 @@ export default function LoginPage() {
         </section>
 
         {/* CENTER COLUMN: The Login Card */}
-        <main className="col-span-12 lg:col-span-6 xl:col-span-5 xl:col-start-4 flex items-center justify-center">
+        <main className="w-full max-w-md shrink-0 flex items-center justify-center">
           <Card className="w-full bg-card/85 backdrop-blur-2xl border-border/80 rounded-[3rem] p-8 md:p-10 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
             {/* Top Accent */}
             <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-primary via-orange-400 to-primary" />
@@ -224,8 +244,8 @@ export default function LoginPage() {
           </Card>
         </main>
 
-        {/* RIGHT COLUMN: Statistics & Info */}
-        <section className="col-span-3 hidden xl:flex flex-col gap-6 justify-center">
+        {/* RIGHT COLUMN: Statistics & Info (Dynamic Live Data from DB) */}
+        <section className="hidden xl:flex w-72 shrink-0 flex-col justify-center">
           <Card className="bg-card/75 backdrop-blur-xl border-border/80 rounded-[2.5rem] p-6 shadow-xl flex flex-col gap-5">
             <h3 className="text-base font-black font-serif text-foreground flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
@@ -234,19 +254,27 @@ export default function LoginPage() {
             
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-muted/40 border border-border/60 rounded-2xl text-center">
-                <span className="text-lg font-black text-primary font-serif">11.000+</span>
+                <span className="text-lg font-black text-primary font-serif">
+                  {stats ? `${stats.total_assets.toLocaleString("id-ID")}` : "..."}
+                </span>
                 <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Total Aset</p>
               </div>
               <div className="p-3 bg-muted/40 border border-border/60 rounded-2xl text-center">
-                <span className="text-lg font-black text-primary font-serif">4</span>
+                <span className="text-lg font-black text-primary font-serif">
+                  {stats ? stats.total_units.toLocaleString("id-ID") : "..."}
+                </span>
                 <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Unit Kerja</p>
               </div>
               <div className="p-3 bg-muted/40 border border-border/60 rounded-2xl text-center">
-                <span className="text-lg font-black text-primary font-serif">20+</span>
+                <span className="text-lg font-black text-primary font-serif">
+                  {stats ? stats.total_locations.toLocaleString("id-ID") : "..."}
+                </span>
                 <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Lokasi Ruang</p>
               </div>
               <div className="p-3 bg-muted/40 border border-border/60 rounded-2xl text-center">
-                <span className="text-lg font-black text-primary font-serif">98%</span>
+                <span className="text-lg font-black text-primary font-serif">
+                  {stats ? `${stats.condition_good_percent}%` : "..."}
+                </span>
                 <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Kondisi Baik</p>
               </div>
             </div>

@@ -302,6 +302,22 @@ class AssetController extends Controller
         ]);
     }
 
+    public function publicStats()
+    {
+        $totalAssets = Asset::query()->count();
+        $totalUnits = \App\Models\Unit::query()->count();
+        $totalLocations = \App\Models\Location::query()->count();
+        $bagusCount = Asset::query()->where('condition', 'bagus')->count();
+        $conditionPercent = $totalAssets > 0 ? round(($bagusCount / $totalAssets) * 100) : 100;
+
+        return response()->json([
+            'total_assets' => $totalAssets,
+            'total_units' => $totalUnits,
+            'total_locations' => $totalLocations,
+            'condition_good_percent' => $conditionPercent,
+        ]);
+    }
+
     public function depreciationStats(Request $request)
     {
         $user = $request->user();

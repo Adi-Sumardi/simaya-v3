@@ -16,6 +16,7 @@ Route::get('/public/assets/{id}', [AssetController::class, 'publicDetail']);
 Route::get('/public/locations/{id}', [AssetController::class, 'publicLocationDetail']);
 Route::get('/public/transfers/{id}', [AssetTransferController::class, 'publicDetail']);
 Route::get('/public/dispositions/{id}', [AssetDispositionController::class, 'publicDetail']);
+Route::get('/public/stats', [AssetController::class, 'publicStats']);
 
 // Yapinet integration endpoint, protected by static API key (not Sanctum)
 Route::middleware('yapinet.auth')->get('integrations/yapinet/summary', [YapinetSummaryController::class, 'summary']);
