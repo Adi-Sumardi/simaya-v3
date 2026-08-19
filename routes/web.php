@@ -22,5 +22,7 @@ Route::get('/disposition/{disposition}/detail', [AssetDispositionController::cla
 
 // All other web routes (including /, /login, /assets, /transfers, /_next/*, etc.)
 // are seamlessly bridged to Next.js on port 3000!
-Route::any('/{any?}', [NextJsProxyController::class, 'proxy'])
+Route::any('/', [NextJsProxyController::class, 'proxy']);
+Route::any('/{any}', [NextJsProxyController::class, 'proxy'])
     ->where('any', '^(?!admin|api|storage|livewire|_debugbar).*$');
+
