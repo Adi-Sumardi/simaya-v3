@@ -30,7 +30,6 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
-            ->spa()
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'danger' => Color::Red,
@@ -92,59 +91,6 @@ class AdminPanelProvider extends PanelProvider
                         }
                     </style>
                 '
-            )
-            ->renderHook(
-                \Filament\View\PanelsRenderHook::BODY_START,
-                fn (): string => \Illuminate\Support\Facades\Blade::render('
-                    <!-- Simaya Loading Overlay to prevent FOUC (Flash of Unstyled Content) -->
-                    <div id="simaya-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; font-family: system-ui, -apple-system, sans-serif; transition: opacity 0.3s ease, visibility 0.3s;">
-                        <div style="width: 40px; height: 40px; border: 4px solid #1e293b; border-top-color: #f59e0b; border-radius: 50%; animation: simaya-spin 1s linear infinite;"></div>
-                        <div style="color: #94a3b8; margin-top: 16px; font-size: 15px; font-weight: 500; letter-spacing: 0.05em;">Memuat SIMAYA...</div>
-                    </div>
-                    <style>
-                        @keyframes simaya-spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    </style>
-                    <script>
-                        (function() {
-                            function hideLoader() {
-                                const loader = document.getElementById("simaya-loader");
-                                if (loader) {
-                                    loader.style.opacity = "0";
-                                    loader.style.visibility = "hidden";
-                                    setTimeout(() => loader.remove(), 300);
-                                }
-                            }
-                            // Hide loader when the page (including stylesheets) is fully loaded
-                            if (document.readyState === "complete") {
-                                hideLoader();
-                            } else {
-                                window.addEventListener("load", hideLoader);
-                            }
-                            // Fallback to hide loader if load event takes too long (e.g., slow networks)
-                            setTimeout(hideLoader, 5000);
-                        })();
-                    </script>
-                    <noscript>
-                        <style>
-                            #simaya-loader { display: none !important; }
-                        </style>
-                        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; font-family: sans-serif; padding: 20px; text-align: center;">
-                            <div style="background: #1e293b; padding: 40px; border-radius: 16px; max-width: 500px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid #334155;">
-                                <svg style="width: 64px; height: 64px; color: #f59e0b; margin-bottom: 20px; display: inline-block;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">JavaScript Diperlukan</h1>
-                                <p style="color: #94a3b8; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-                                    SIMAYA memerlukan JavaScript untuk memuat antarmuka pengguna dan data aset dengan benar. Harap aktifkan JavaScript di pengaturan browser Anda, lalu segarkan halaman ini.
-                                </p>
-                                <a href="." style="display: inline-block; background: #f59e0b; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none;">Segarkan Halaman</a>
-                            </div>
-                        </div>
-                    </noscript>
-                ')
             );
     }
 }
