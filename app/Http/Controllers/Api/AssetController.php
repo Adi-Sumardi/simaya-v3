@@ -80,8 +80,8 @@ class AssetController extends Controller
             $query->whereIn('id', $ids);
         }
 
-        $perPage = $request->integer('per_page', 10);
-        $assets = $query->latest()->paginate($perPage);
+        $perPage = min(max($request->integer('per_page', 10), 1), 100);
+        $assets = $query->orderBy('id', 'desc')->paginate($perPage);
 
         return response()->json($assets);
     }
