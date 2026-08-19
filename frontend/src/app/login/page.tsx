@@ -13,7 +13,6 @@ import {
   GitCompare, 
   Trash2, 
   BarChart3, 
-  PhoneCall, 
   QrCode,
   ShieldCheck
 } from "lucide-react";
@@ -277,22 +276,6 @@ export default function LoginPage() {
                 </span>
                 <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Kondisi Baik</p>
               </div>
-            </div>
-
-            <hr className="border-border" />
-
-            <div className="flex flex-col gap-2">
-              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <PhoneCall className="w-4 h-4 text-primary" />
-                <span>Bantuan Teknis</span>
-              </h4>
-              <p className="text-[9px] text-muted-foreground leading-relaxed">Kendala akun atau hak akses unit? Hubungi administrator:</p>
-              <a 
-                href="mailto:support@simaya.id" 
-                className="text-[10px] text-primary font-bold hover:underline"
-              >
-                support@simaya.id
-              </a>
             </div>
           </Card>
         </section>
