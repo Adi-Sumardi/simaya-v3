@@ -10,7 +10,10 @@ Route::get('/', function () {
 });
 
 Route::get('/login', function () {
-    return response()->json(['message' => 'Unauthenticated.'], 401);
+    if (request()->expectsJson()) {
+        return response()->json(['message' => 'Unauthenticated.'], 401);
+    }
+    return redirect('/admin/login');
 })->name('login');
 
 Route::get('/guest-data-asset', [AssetController::class, 'asset'])->name('asset.all');
