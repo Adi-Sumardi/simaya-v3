@@ -13,12 +13,23 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Redirect Trailing Slashes If Not A Folder...
+    # 1. Rute Khusus Laravel Backend (API, Filament Admin, Storage, Livewire)
+    RewriteCond %{REQUEST_URI} ^/(api|admin|storage|livewire) [NC]
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
 
-    # Send Requests To Front Controller...
+    # 2. File atau Folder Fisik yang ada di Server
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 3. Semua Halaman Lainnya Diteruskan ke Next.js (Port 3000)
+    <IfModule mod_proxy.c>
+        RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+    </IfModule>
+
+    # Fallback ke Laravel jika mod_proxy belum aktif
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
