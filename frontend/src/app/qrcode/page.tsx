@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import Pagination from "@/components/ui/Pagination";
 import AssetQrSticker from "@/components/common/AssetQrSticker";
 import { api } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
@@ -10,28 +9,25 @@ import {
   QrCode, 
   Printer, 
   Search, 
-  Filter, 
   Menu, 
-  Building, 
-  MapPin, 
-  Tag, 
   CheckSquare, 
   Square, 
   Loader2,
-  RefreshCw,
-  Sliders,
-  Check
+  PlusCircle,
+  Check,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+const PER_PAGE = 60; // 60 stiker per load untuk performa optimal
 
 export default function QrCodePrintPage() {
   const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Filters
   const [filterUnit, setFilterUnit] = useState("all");
@@ -39,16 +35,28 @@ export default function QrCodePrintPage() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterCondition, setFilterCondition] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Metadata
   const [units, setUnits] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
-  // Asset list & selection
+  // Asset list, Pagination & Selection
   const [assets, setAssets] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [labelSize, setLabelSize] = useState<"compact" | "standard" | "large">("compact");
+  const [labelSize, setLabelSize] = useState<"compact" | "standard">("compact");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Load Metadata
   useEffect(() => {
@@ -69,37 +77,72 @@ export default function QrCodePrintPage() {
     fetchMeta();
   }, []);
 
-  // Fetch Assets for QR Print
-  const fetchQrAssets = async () => {
+  // Fetch Assets (Initial or Filter change)
+  const fetchQrAssets = useCallback(async (targetPage: number = 1, append: boolean = false) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
       const params = new URLSearchParams();
-      params.set("per_page", "9999");
+      params.set("page", targetPage.toString());
+      params.set("per_page", PER_PAGE.toString());
       if (filterUnit !== "all") params.set("unit_id", filterUnit);
       if (filterLocation !== "all") params.set("location_id", filterLocation);
       if (filterCategory !== "all") params.set("category_id", filterCategory);
       if (filterCondition !== "all") params.set("condition", filterCondition);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
 
       const res = await api.get(`/assets?${params.toString()}`);
-      const data = res.data || [];
-      setAssets(data);
-      // Auto select all when filtered
-      setSelectedIds(data.map((a: any) => a.id));
+      const newItems = res.data || [];
+      const totalCount = res.total || 0;
+      const lastPage = res.last_page || 1;
+
+      setTotal(totalCount);
+      setPage(targetPage);
+      setHasMore(targetPage < lastPage);
+
+      if (append) {
+        setAssets((prev) => {
+          const combined = [...prev, ...newItems];
+          // Auto select newly loaded items as well
+          setSelectedIds((prevSelected) => [
+            ...prevSelected,
+            ...newItems.map((a: any) => a.id)
+          ]);
+          return combined;
+        });
+      } else {
+        setAssets(newItems);
+        // Auto select items on initial load
+        setSelectedIds(newItems.map((a: any) => a.id));
+      }
     } catch (err) {
       console.error("Failed to fetch assets for QR print", err);
+      toast.error("Gagal memuat daftar aset untuk QR Code");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [filterUnit, filterLocation, filterCategory, filterCondition, debouncedSearch, toast]);
+
+  // Trigger initial fetch when filters change
+  useEffect(() => {
+    fetchQrAssets(1, false);
+  }, [fetchQrAssets]);
+
+  // Load More Handler
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchQrAssets(page + 1, true);
     }
   };
 
-  useEffect(() => {
-    fetchQrAssets();
-  }, [filterUnit, filterLocation, filterCategory, filterCondition, searchQuery]);
-
   const handleToggleSelectRow = (id: number) => {
     if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(x => x !== id));
+      setSelectedIds(selectedIds.filter((x) => x !== id));
     } else {
       setSelectedIds([...selectedIds, id]);
     }
@@ -109,12 +152,12 @@ export default function QrCodePrintPage() {
     if (selectedIds.length === assets.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(assets.map(a => a.id));
+      setSelectedIds(assets.map((a) => a.id));
     }
   };
 
   const printableAssets = useMemo(() => {
-    return assets.filter(a => selectedIds.includes(a.id));
+    return assets.filter((a) => selectedIds.includes(a.id));
   }, [assets, selectedIds]);
 
   const handlePrint = () => {
@@ -180,17 +223,18 @@ export default function QrCodePrintPage() {
             <Button 
               variant="outline"
               onClick={handleSelectAll}
+              disabled={assets.length === 0}
               className="rounded-2xl h-11 px-4 text-xs font-bold"
             >
-              {selectedIds.length === assets.length ? (
+              {selectedIds.length === assets.length && assets.length > 0 ? (
                 <>
-                  <Square className="w-4 h-4 mr-2" />
+                  <Square className="w-4 h-4 mr-2 text-muted-foreground" />
                   <span>Batal Pilih Semua</span>
                 </>
               ) : (
                 <>
-                  <CheckSquare className="w-4 h-4 mr-2" />
-                  <span>Pilih Semua ({assets.length})</span>
+                  <CheckSquare className="w-4 h-4 mr-2 text-primary" />
+                  <span>Pilih Semua yang Tampil ({assets.length})</span>
                 </>
               )}
             </Button>
@@ -227,7 +271,7 @@ export default function QrCodePrintPage() {
                 className="flex h-11 rounded-2xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="all">Semua Unit Kerja</option>
-                {units.map(u => (
+                {units.map((u) => (
                   <option key={u.id} value={u.id.toString()}>{u.name}</option>
                 ))}
               </select>
@@ -238,9 +282,11 @@ export default function QrCodePrintPage() {
                 className="flex h-11 rounded-2xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="all">Semua Ruangan / Lokasi</option>
-                {locations.filter(l => filterUnit === "all" || String(l.unit_id) === filterUnit).map(l => (
-                  <option key={l.id} value={l.id.toString()}>{l.name}</option>
-                ))}
+                {locations
+                  .filter((l) => filterUnit === "all" || String(l.unit_id) === filterUnit)
+                  .map((l) => (
+                    <option key={l.id} value={l.id.toString()}>{l.name}</option>
+                  ))}
               </select>
 
               <select
@@ -249,7 +295,7 @@ export default function QrCodePrintPage() {
                 className="flex h-11 rounded-2xl border border-input bg-card px-3.5 py-2 text-xs font-medium text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="all">Semua Kategori</option>
-                {categories.map(c => (
+                {categories.map((c) => (
                   <option key={c.id} value={c.id.toString()}>{c.name}</option>
                 ))}
               </select>
@@ -258,7 +304,7 @@ export default function QrCodePrintPage() {
             {/* Selection info bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border text-xs">
               <span className="text-muted-foreground font-semibold">
-                Menampilkan <strong className="text-foreground">{assets.length}</strong> aset &bull; Terpilih untuk dicetak: <strong className="text-primary font-bold">{printableAssets.length}</strong> label
+                Menampilkan <strong className="text-foreground">{assets.length}</strong> dari total <strong className="text-foreground">{total.toLocaleString("id-ID")}</strong> aset &bull; Terpilih untuk dicetak: <strong className="text-primary font-bold">{printableAssets.length}</strong> label
               </span>
               <span className="text-[11px] text-muted-foreground font-medium">
                 Klik kartu label di bawah untuk memilih / membatalkan cetak
@@ -268,38 +314,77 @@ export default function QrCodePrintPage() {
         </Card>
 
         {/* Printable QR Sticker Grid Container */}
-        <div className="w-full">
+        <div className="w-full flex flex-col gap-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 print:hidden">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <p className="text-xs text-muted-foreground font-semibold">Menyiapkan barcode QR Code aset...</p>
+              <p className="text-xs text-muted-foreground font-semibold">Memuat data barcode QR Code aset...</p>
             </div>
-          ) : printableAssets.length === 0 ? (
+          ) : assets.length === 0 ? (
             <Card className="rounded-3xl p-12 text-center text-muted-foreground print:hidden">
-              <p className="text-xs font-semibold">Tidak ada aset terpilih untuk dicetak. Pilih filter atau centang aset di atas.</p>
+              <p className="text-xs font-semibold">Tidak ada aset yang sesuai dengan filter pencarian.</p>
             </Card>
           ) : (
-            <div className="flex flex-wrap gap-3 p-4 bg-muted/20 border border-border rounded-3xl print:bg-white print:border-none print:p-0 print:gap-1.5 print:m-0 print:w-full">
-              {assets.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => handleToggleSelectRow(item.id)}
-                    className={`
-                      cursor-pointer transition-all duration-150 select-none relative
-                      print:cursor-default print:border-none print:shadow-none no-break
-                      ${isSelected ? "ring-2 ring-primary ring-offset-2 scale-[1.01]" : "opacity-35 grayscale hover:opacity-70 print:hidden"}
-                    `}
+            <>
+              <div className="flex flex-wrap gap-3 p-4 bg-muted/20 border border-border rounded-3xl print:bg-white print:border-none print:p-0 print:gap-1.5 print:m-0 print:w-full">
+                {assets.map((item) => {
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleToggleSelectRow(item.id)}
+                      className={`
+                        cursor-pointer transition-all duration-150 select-none relative
+                        print:cursor-default print:border-none print:shadow-none no-break
+                        ${isSelected ? "ring-2 ring-primary ring-offset-2 scale-[1.01]" : "opacity-35 grayscale hover:opacity-70 print:hidden"}
+                      `}
+                    >
+                      <AssetQrSticker 
+                        asset={item} 
+                        size={labelSize}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Load More Button Container */}
+              <div className="flex flex-col items-center justify-center gap-2 py-4 print:hidden">
+                {hasMore ? (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="rounded-2xl h-12 px-8 font-bold border-primary/30 hover:bg-primary/10 hover:border-primary text-foreground gap-2.5 shadow-sm transition-all"
                   >
-                    <AssetQrSticker 
-                      asset={item} 
-                      size={labelSize}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                        <span>Memuat {PER_PAGE} Aset Tambahan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="w-4 h-4 text-primary" />
+                        <span>
+                          Muat Lebih Banyak (+{Math.min(PER_PAGE, total - assets.length)} Aset)
+                        </span>
+                        <span className="text-[11px] text-muted-foreground ml-1">
+                          ({assets.length} dari {total.toLocaleString("id-ID")})
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  total > 0 && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground bg-muted/40 px-5 py-2.5 rounded-2xl border border-border/50">
+                      <Check className="w-4 h-4 text-green-500" />
+                      <span>Semua data aset telah dimuat (Total: {total.toLocaleString("id-ID")} aset)</span>
+                    </div>
+                  )
+                )}
+              </div>
+            </>
           )}
         </div>
       </main>
