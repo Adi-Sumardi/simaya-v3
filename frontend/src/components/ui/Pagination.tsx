@@ -46,14 +46,12 @@ export default function Pagination({
     return pages;
   };
 
-  if (totalPages <= 1 && totalItems <= perPage) return null;
-
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-border bg-card rounded-b-2xl">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-border bg-card">
       {/* Info & Per Page */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold flex-wrap">
         <span>
-          Menampilkan <strong className="text-foreground">{startItem}–{endItem}</strong> dari <strong className="text-foreground">{totalItems}</strong> data
+          Menampilkan <strong className="text-foreground">{startItem}–{endItem}</strong> dari <strong className="text-foreground">{totalItems.toLocaleString("id-ID")}</strong> data
         </span>
         {onPerPageChange && (
           <div className="flex items-center gap-1.5">

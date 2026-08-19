@@ -193,7 +193,7 @@ export default function LocationsPage() {
     <div className="flex bg-background min-h-screen relative overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 w-full min-h-screen pb-16">
         
         {/* Header Section */}
         <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center bg-card border border-border rounded-3xl p-5 sm:p-6 shadow-sm">
@@ -239,78 +239,84 @@ export default function LocationsPage() {
         {/* Locations Grid */}
         <section className="flex flex-col gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-            {paginatedRooms.map((room) => (
-              <Card 
-                key={room.id} 
-                onClick={() => handleOpenDetail(room)}
-                className="rounded-3xl hover:shadow-md hover:border-primary/40 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary-light text-primary border border-primary/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                      <MapPin className="w-6 h-6" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant="primaryLight" className="text-xs font-bold rounded-full px-2.5 py-1">
-                        {room.assets_count || 0} Aset
-                      </Badge>
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg border border-border text-emerald-600 hover:bg-emerald-500/10"
-                        title="Buka / Cetak QR Ruangan"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Link href={`/guest-data-asset-ruangan/${room.id}`}>
-                          <QrCode className="w-3.5 h-3.5" />
-                        </Link>
-                      </Button>
-                      <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditModal(room);
-                        }}
-                        className="h-8 w-8 rounded-lg border border-border"
-                        title="Ubah Ruangan"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleDelete(room.id, e)}
-                        className="h-8 w-8 rounded-lg border border-border text-destructive hover:text-destructive hover:bg-destructive/10"
-                        title="Hapus Ruangan"
-                      >
-                        <Trash className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-extrabold text-foreground font-serif group-hover:text-primary transition-colors">{room.name}</h3>
-                    <Badge variant="outline" className="text-[10px] font-mono font-bold bg-muted/60 text-primary border-primary/20">
-                      {room.number}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mt-2">
-                    <Building className="w-3.5 h-3.5 shrink-0 opacity-60" />
-                    <span>{room.unit_name} &bull; {room.floor}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 border-t border-border pt-3 mt-4 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <Info className="w-3.5 h-3.5 text-primary" />
-                    <span>Klik untuk Detail & Relasi Aset</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {paginatedRooms.length === 0 && (
+            {loading ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-24 gap-3">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <span className="text-xs font-bold text-muted-foreground">Memuat data lokasi & ruangan...</span>
+              </div>
+            ) : paginatedRooms.length === 0 ? (
               <Card className="col-span-full rounded-3xl p-12 text-center text-xs font-bold text-muted-foreground">
                 Tidak ada lokasi ruangan ditemukan.
               </Card>
+            ) : (
+              paginatedRooms.map((room) => (
+                <Card 
+                  key={room.id} 
+                  onClick={() => handleOpenDetail(room)}
+                  className="rounded-3xl hover:shadow-md hover:border-primary/40 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary-light text-primary border border-primary/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <MapPin className="w-6 h-6" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="primaryLight" className="text-xs font-bold rounded-full px-2.5 py-1">
+                          {room.assets_count || 0} Aset
+                        </Badge>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border border-border text-emerald-600 hover:bg-emerald-500/10"
+                          title="Buka / Cetak QR Ruangan"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link href={`/guest-data-asset-ruangan/${room.id}`}>
+                            <QrCode className="w-3.5 h-3.5" />
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModal(room);
+                          }}
+                          className="h-8 w-8 rounded-lg border border-border"
+                          title="Ubah Ruangan"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleDelete(room.id, e)}
+                          className="h-8 w-8 rounded-lg border border-border text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Hapus Ruangan"
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-extrabold text-foreground font-serif group-hover:text-primary transition-colors">{room.name}</h3>
+                      <Badge variant="outline" className="text-[10px] font-mono font-bold bg-muted/60 text-primary border-primary/20">
+                        {room.number}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mt-2">
+                      <Building className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                      <span>{room.unit_name} &bull; {room.floor}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 border-t border-border pt-3 mt-4 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      <Info className="w-3.5 h-3.5 text-primary" />
+                      <span>Klik untuk Detail & Relasi Aset</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
           <Pagination 
