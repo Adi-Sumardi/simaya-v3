@@ -234,14 +234,7 @@ class AssetTransferResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                $user = Auth::user();
-
                 $query->with(['fromUnit', 'fromLocation', 'toLocation', 'requestedBy', 'approvedBy', 'items']);
-
-                // Unit hanya lihat transfer mereka sendiri
-                if ($user->hasRole('Unit')) {
-                    $query->where('requested_by', $user->id);
-                }
             })
             ->columns([
                 Tables\Columns\TextColumn::make('transfer_number')
@@ -676,5 +669,23 @@ class AssetTransferResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user && $user->hasRole('Unit')) {
+            $query->where(function ($q) use ($user) {
+                if ($user->unit_id) {
+                    $q->where('from_unit_id', $user->unit_id);
+                } else {
+                    $q->where('requested_by', $user->id);
+                }
+            });
+        }
+
+        return $query;
     }
 }

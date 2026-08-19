@@ -127,13 +127,19 @@ class AssetResource extends Resource
                             ->relationship('unit', 'name')
                             ->searchable()
                             ->required()
+                            ->default(fn () => Auth::user()?->hasRole('Unit') ? Auth::user()->unit_id : null)
+                            ->disabled(fn () => Auth::user()?->hasRole('Unit'))
+                            ->dehydrated()
                             ->reactive(),
                         Forms\Components\Select::make('location_id')
                             ->required()
                             ->label('Lokasi')
                             ->searchable()
                             ->options(function (callable $get) {
-                                $unitId = $get('unit_id');
+                                $user = Auth::user();
+                                $unitId = ($user && $user->hasRole('Unit') && $user->unit_id)
+                                    ? $user->unit_id
+                                    : $get('unit_id');
                                 if (!$unitId) {
                                     return [];
                                 }
@@ -641,10 +647,17 @@ class AssetResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ])
             ->notTransferred(); // Exclude aset yang sudah ditransfer
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('Unit') && $user->unit_id) {
+            $query->where('unit_id', $user->unit_id);
+        }
+
+        return $query;
     }
 }

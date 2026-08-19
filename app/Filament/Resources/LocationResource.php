@@ -47,7 +47,12 @@ class LocationResource extends Resource
                     ->maxLength(255),
                 Forms\Components\Select::make('unit_id')
                     ->label('Unit')
-                    ->relationship('unit', 'name'),
+                    ->relationship('unit', 'name')
+                    ->searchable()
+                    ->required()
+                    ->default(fn () => Auth::user()?->hasRole('Unit') ? Auth::user()->unit_id : null)
+                    ->disabled(fn () => Auth::user()?->hasRole('Unit'))
+                    ->dehydrated(),
                 Forms\Components\Hidden::make('user_id')
                     ->default(Auth::user()->id)
             ]);
@@ -56,18 +61,6 @@ class LocationResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) {
-                $user = Auth::user();
-
-                if ($user->hasRole('super_admin')) {
-                    return;
-                }
-
-                if ($user->hasRole('Unit')) {
-                    $query->where('user_id', $user->id);
-                }
-
-            })
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Lokasi')
@@ -101,6 +94,7 @@ class LocationResource extends Resource
                             ->relationship('unit', 'name')
                             ->label('Unit'),
                     ])
+                    ->hidden(fn () => Auth::user()?->hasRole('Unit'))
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
@@ -136,5 +130,17 @@ class LocationResource extends Resource
             'edit' => Pages\EditLocation::route('/{record}/edit'),
             'view' => Pages\ViewLocation::route('/{record}/view'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user && $user->hasRole('Unit') && $user->unit_id) {
+            $query->where('unit_id', $user->unit_id);
+        }
+
+        return $query;
     }
 }
